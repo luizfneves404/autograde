@@ -25,9 +25,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 📥 Checkout code
-        uses: actions/checkout
+        uses: actions/checkout@v4
       - name: 🟢 Set up Node.js
-        uses: actions/setup-node
+        uses: actions/setup-node@v4
         with:
           node-version: '24'
           cache: 'npm'
@@ -36,7 +36,7 @@ jobs:
       - name: 🔨 Build project
         run: npm run build # This should create the ./dist directory
       - name: 📤 Upload artifact
-        uses: actions/upload-pages-artifact
+        uses: actions/upload-pages-artifact@v3
         with:
           # Upload the ./dist directory
           path: './dist'
@@ -51,4 +51,4 @@ jobs:
     steps:
       - name: 🚀 Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages
+        uses: actions/deploy-pages@v4
