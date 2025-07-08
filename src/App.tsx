@@ -1,26 +1,27 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '../utils/supabase'
+import type { Turma } from './types'
 
 function Page() {
-  const [todos, setTodos] = useState([])
+  const [turmas, setTurmas] = useState<Turma[]>([])
 
   useEffect(() => {
-    function getTodos() {
-      const { data: todos } = await supabase.from('todos').select()
+    async function getTurmas() {
+      const { data: turmas } = await supabase.from('turmas').select()
 
-      if (todos.length > 1) {
-        setTodos(todos)
+      if (turmas && turmas.length > 1) {
+        setTurmas(turmas)
       }
     }
 
-    getTodos()
+    getTurmas()
   }, [])
 
   return (
     <div>
-      {todos.map((todo) => (
-        <li key={todo}>{todo}</li>
+      {turmas.map((turma) => (
+        <li key={turma.turma_code}>{turma.turma_code}</li>
       ))}
     </div>
   )
