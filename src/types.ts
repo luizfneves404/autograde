@@ -1,166 +1,123 @@
-export type DayOfWeek = 'segunda' | 'terça' | 'quarta' | 'quinta' | 'sexta' | 'sábado'
+export type ConstraintStatus = 'SATISFIED' | 'VIOLATED' | 'PENDING';
+
+export type DayOfWeek =
+  | 'segunda'
+  | 'terça'
+  | 'quarta'
+  | 'quinta'
+  | 'sexta'
+  | 'sábado';
+
+export type TimeSlot = {
+  startHour: number; // 24-hour format
+  endHour: number; // 24-hour format
+};
 
 export type ClassTime = {
-    day: DayOfWeek
-    startHour: number // 24-hour format, e.g., 9 for 9:00
-    endHour: number   // 24-hour format, e.g., 11 for 11:00
-}
+  day: DayOfWeek;
+  slot: TimeSlot;
+};
 
-export type Schedule = ClassTime[]
+export type Schedule = ClassTime[];
 
-export type Disciplina = {
-    code: string // unique
-    name: string
-    shouldHavePreRequisites: boolean
-    bidirCoRequisites: string[]
-    unidirCoRequisites: string[]
-    numCreditos: number
-    possoPuxar: boolean
-}
+export type Course = {
+  code: string; // unique
+  name: string;
+  shouldHavePreRequisites: boolean;
+  bidirCoRequisites: string[];
+  unidirCoRequisites: string[];
+  numCredits: number;
+  classes: CourseClass[];
+};
 
-export type Turma = {
-    // turmaCode, disciplinaCode and destCode combination is unique
-    turmaCode: string
-    disciplinaCode: string
-    destCode: string
-    numVagas: number
-    teacherName: string
-    distanceHours: number // horas à distância
-    SHFHours: number // horas sem horário fixo (SHF)
-    schedule: Schedule
-}
+export type CourseClass = {
+  classCode: string;
+  courseCode: string;
+  professorName: string;
+  distanceHours: number; // horas à distância
+  SHFHours: number; // horas sem horário fixo (SHF)
+  schedule: Schedule;
+  offerings: ClassOffering[];
+};
 
-export type TurmaIdentifier = Pick<Turma, 'turmaCode' | 'disciplinaCode' | 'destCode'>
+export type ClassOffering = {
+  classCode: string;
+  courseCode: string;
+  destCode: string;
+  vacancyCount: number;
+};
 
+export type ClassIdentifier = Pick<CourseClass, 'classCode' | 'courseCode'>;
+
+export type ClassOfferingIdentifier = Pick<
+  ClassOffering,
+  'classCode' | 'courseCode' | 'destCode'
+>;
 
 export type Grade = {
-    turmas: Turma[]
-    score: number
-    preferences: string[] // placeholder for preferences met by this grade
-}
+  classes: CourseClass[];
+  score: number;
+  preferences: string[]; // placeholder for preferences met by this grade
+};
 
 export type AppData = {
-    disciplinas: Disciplina[]
-    turmas: Turma[]
-}
+  courses: Record<string, Course>;
+  preferenceSet: PreferenceSet;
+};
 
+// Core constraint language - minimal and complete
+export type ExprNode =
+  // ─── Boolean Logic ───────────────────────────────────
+  | { op: 'and' | 'or'; children: ExprNode[] }
+  | { op: 'not'; child: ExprNode }
 
-export interface BasePreference {
-    id: string
-    enabled: boolean
-    type: 'hard' | 'soft' // Hard: must be met. Soft: contributes to a score.
-    weight?: number       // For soft preferences, defines its importance (e.g., 1-10).
-}
-
-/**
- * A discriminated union of all possible user preferences.
- * The 'kind' property clearly defines the intent of the rule.
- */
-export type Preference = (
-    // --- Content Preferences: Rules about which courses and classes to take ---
-    {
-        kind: 'require_disciplinas'
-        name: string
-        description: string
-        disciplinaCodes: string[] // These courses MUST be included.
-    }
-    | {
-        kind: 'avoid_disciplinas'
-        name: string
-        description: string
-        disciplinaCodes: string[] // These courses MUST NOT be included.
-    }
-    | {
-        kind: 'prefer_turmas'
-        name: string
-        description: string
-        turmas: TurmaIdentifier[] // Prefer these specific classes over others.
-    }
-    | {
-        kind: 'avoid_turmas'
-        name: string
-        description: string
-        turmas: TurmaIdentifier[] // Avoid these specific classes.
+  // ─── Class‐level Predicate ───────────────────────────
+  | {
+      op: '==' | '!=' | '>' | '<' | '>=' | '<=';
+      property: string;
+      value: string | number;
     }
 
-    // --- Teacher Preferences ---
-    | {
-        kind: 'prefer_teacher'
-        name: string
-        description: string
-        teacherNames: string[]
-        disciplinaCode?: string // Optional: apply only to a specific course.
-    }
-    | {
-        kind: 'avoid_teacher'
-        name: string
-        description: string
-        teacherNames: string[]
-        disciplinaCode?: string // Optional: apply only to a specific course.
+  // ─── Schedule‐level Quantifier ───────────────────────
+  | {
+      op: 'some' | 'all'; // ∃ or ∀
+      predicate: ExprNode; // evaluated per-class
     }
 
-    // --- Schedule & Time Preferences: Rules about the schedule's structure ---
-    | {
-        kind: 'time_window' // Prefer taking all classes within this window.
-        name: string
-        description: string
-        days: DayOfWeek[]
-        startHour: number
-        endHour: number
-    }
-    | {
-        kind: 'avoid_time_window' // Avoid classes during this window (e.g., for lunch).
-        name: string
-        description: string
-        days: DayOfWeek[]
-        startHour: number
-        endHour: number
-    }
-    | {
-        kind: 'limit_campus_days'
-        name: string
-        description: string
-        maxDays: number // Set a maximum number of days with classes.
-    }
-    | {
-        kind: 'require_free_days' // These days must have no classes.
-        name: string
-        description: string
-        days: DayOfWeek[]
-    }
-    | {
-        kind: 'prefer_compact_schedule' // Penalize gaps between classes. The 'weight' determines the penalty.
-        name: string
-        description: string
+  // ─── Aggregation ────────────────────────────────────
+  | {
+      op: 'sum' | 'count'; // sum of a property, or count of classes
+      property?: string; // required if op==='sum'
+      operator: '==' | '!=' | '>' | '<' | '>=' | '<=';
+      value: number;
+      predicate?: ExprNode; // optional filter on which classes to include
     }
 
-    // --- Undergrad course Preferences ---
-    | {
-        kind: 'my_dest_codes'
-        name: string
-        description: string
-        destCodes: string[]
+  // ─── Pairwise Relation ──────────────────────────────
+  | {
+      op: 'pairwise';
+      relation: '!=' | 'overlaps';
+      property1: string; // e.g. 'time' or 'professorName'
+      property2?: string; // defaults to property1
+      predicate?: ExprNode; // optional filter on which classes to compare
     }
 
-    // --- Workload Preferences ---
-    | {
-        kind: 'credit_load'
-        name: string
-        description: string
-        min?: number // Define a minimum and/or maximum credit load.
-        max?: number
-    }
-) & BasePreference
+  // ─── Custom Node ────────────────────────────────────
+  | {
+      op: 'custom';
+      id: string;
+      params?: Record<string, unknown>;
+    };
 
-export interface GlobalSettings {
-  softConstraintAggregation: 'sum' | 'weighted_average' | 'max' | 'min'
-  maxViolations: number
-}
+export type UIConstraint = {
+  id: string;
+  name: string;
+  description: string;
+  enabled: boolean;
+  expression: ExprNode;
+};
 
-export interface PreferenceSet {
-  id: string
-  name: string
-  description: string
-  preferences: Preference[]
-  globalSettings: GlobalSettings
-}
+export type PreferenceSet = {
+  hardConstraints: UIConstraint[];
+  userDestCodes: string[];
+};

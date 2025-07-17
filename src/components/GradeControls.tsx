@@ -17,7 +17,11 @@ export const GradeControls: React.FC<GradeControlsProps> = ({
 
   return (
     <div className="flex items-center gap-4">
-      <button onClick={goToPrevious} disabled={isControlDisabled} className="btn-secondary">
+      <button
+        onClick={goToPrevious}
+        disabled={isControlDisabled}
+        className="btn-secondary"
+      >
         ← Anterior
       </button>
 
@@ -25,7 +29,11 @@ export const GradeControls: React.FC<GradeControlsProps> = ({
         Grade {currentGradeIndex + 1} de {totalGrades}
       </span>
 
-      <button onClick={goToNext} disabled={isControlDisabled} className="btn-secondary">
+      <button
+        onClick={goToNext}
+        disabled={isControlDisabled}
+        className="btn-secondary"
+      >
         Próxima →
       </button>
     </div>

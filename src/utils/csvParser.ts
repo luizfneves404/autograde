@@ -1,137 +1,156 @@
-import type { AppData, Disciplina, Turma, Schedule, DayOfWeek } from '@/types'
+import type { Course, Schedule, DayOfWeek } from '@/types';
+// No longer need createClassKey if we aren't creating a flat dictionary
+// import { createClassKey } from '@/utils/keys';
 
-export const parseCSVData = (csvContent: string): AppData => {
-  const lines = csvContent.split('\n')
-  const disciplinas: Disciplina[] = []
-  const turmas: Turma[] = []
+/**
+ * Parses a denormalized CSV string into a purely nested data structure of courses.
+ * This function treats the nested structure as the single source of truth.
+ *
+ * @param csvContent The raw string content from the CSV file.
+ * @returns A dictionary of courses, with classes and offerings nested within.
+ */
+export const parseCSVData = (csvContent: string): Record<string, Course> => {
+  const courses: Record<string, Course> = {};
 
-  // Skip header lines and find the data start
-  let dataStartIndex = -1
+  const lines = csvContent.split('\n');
+
+  let dataStartIndex = -1;
   for (let i = 0; i < lines.length; i++) {
-    console.log(lines[i])
     if (lines[i].includes('Disciplina,Nome da disciplina,Professor')) {
-      dataStartIndex = i + 1
-      break
+      dataStartIndex = i + 1;
+      break;
     }
   }
 
   if (dataStartIndex === -1) {
-    throw new Error('Cabeçalho CSV não encontrado. Certifique-se de que este é um arquivo CSV de horário de aulas.')
+    throw new Error(
+      'CSV header not found. Please ensure you are using a valid class schedule CSV file.',
+    );
   }
 
-  // Parse each data line
   for (let i = dataStartIndex; i < lines.length; i++) {
-    const line = lines[i].trim()
-    if (!line || line.length < 10) continue // Skip empty or very short lines
+    const line = lines[i].trim();
+    if (!line) continue;
 
     try {
-      const parts = line.split(',')
-      if (parts.length < 13) continue // Skip incomplete lines
+      const parts = line.split(',');
+      if (parts.length < 13) continue;
 
       const [
-        disciplinaCode,
-        disciplinaName,
+        courseCode,
+        courseName,
         professorName,
         numCreditos,
-        turmaCode,
-        destino,
-        vagas,
+        classCode,
+        destCode,
+        vacancyCount,
         _,
         horarioSala,
         distanceHours,
         SHFHours,
         __,
         preReq,
-        ___
-      ] = parts.map(p => p.trim())
+      ] = parts.map((p) => p.trim());
 
-      // Create or update disciplina
-      const cleanDisciplinaCode = disciplinaCode.replace(/[^A-Z0-9]/g, '')
-      const cleanDisciplinaName = disciplinaName.trim()
+      const cleanCourseCode = courseCode.replace(/[^A-Z0-9]/g, '');
+      const cleanClassCode = classCode.trim();
 
-      if (cleanDisciplinaCode && cleanDisciplinaName) {
-        const existingDisciplina = disciplinas.find(d => d.code === cleanDisciplinaCode)
-        if (!existingDisciplina) {
-          disciplinas.push({
-            code: cleanDisciplinaCode,
-            name: cleanDisciplinaName,
-            shouldHavePreRequisites: preReq?.toLowerCase().includes('sim') || false,
-            unidirCoRequisites: [],
-            bidirCoRequisites: [],
-            possoPuxar: false,
-            numCreditos: parseInt(numCreditos) || 0
-          })
-        }
+      if (!cleanCourseCode || !cleanClassCode) continue;
+
+      // 1. Get or Create the Course
+      if (!courses[cleanCourseCode]) {
+        courses[cleanCourseCode] = {
+          code: cleanCourseCode,
+          name: courseName.trim(),
+          numCredits: parseInt(numCreditos, 10) || 0,
+          shouldHavePreRequisites:
+            preReq?.toLowerCase().includes('sim') || false,
+          bidirCoRequisites: [],
+          unidirCoRequisites: [],
+          classes: [],
+        };
+      }
+      const course = courses[cleanCourseCode];
+
+      // 2. Get or Create the Class (CourseClass) within the Course
+      let courseClass = course.classes.find(
+        (c) => c.classCode === cleanClassCode,
+      );
+
+      if (!courseClass) {
+        courseClass = {
+          classCode: cleanClassCode,
+          courseCode: cleanCourseCode,
+          professorName: professorName.trim(),
+          schedule: parseScheduleFromCSV(horarioSala),
+          distanceHours: parseInt(distanceHours, 10) || 0,
+          SHFHours: parseInt(SHFHours, 10) || 0,
+          offerings: [],
+        };
+        course.classes.push(courseClass);
       }
 
-      // Create turma
-      const cleanTurmaCode = turmaCode.trim()
-      const cleanProfessorName = professorName.trim()
-      const numVagas = parseInt(vagas) || 0
-      const cleanDestino = destino.trim()
-
-      if (cleanTurmaCode && cleanProfessorName && cleanDisciplinaCode) {
-        const schedule = parseScheduleFromCSV(horarioSala)
-
-        turmas.push({
-          turmaCode: cleanTurmaCode,
-          disciplinaCode: cleanDisciplinaCode,
-          destCode: cleanDestino,
-          numVagas: numVagas,
-          teacherName: cleanProfessorName,
-          schedule: schedule,
-          distanceHours: parseInt(distanceHours) || 0,
-          SHFHours: parseInt(SHFHours) || 0
-        })
-      }
+      // 3. Add the Class Offering to the Class
+      courseClass.offerings.push({
+        classCode: cleanClassCode,
+        courseCode: cleanCourseCode,
+        destCode: destCode.trim(),
+        vacancyCount: parseInt(vacancyCount, 10) || 0,
+      });
     } catch (error) {
-      console.warn(`Skipping line ${i + 1}: ${error}`)
-      continue
+      console.warn(
+        `Skipping line due to error: ${error instanceof Error ? error.message : String(error)}`,
+        { line: i + 1 },
+      );
     }
   }
 
-  return { disciplinas, turmas }
-}
+  return courses;
+};
 
+/**
+ * Parses a schedule string (e.g., "SEG 8-10 QUI 8-10") into a structured array.
+ * This function remains unchanged.
+ */
 export const parseScheduleFromCSV = (horarioSala: string): Schedule => {
-  const schedule: Schedule = []
-  if (!horarioSala || horarioSala.trim() === '') return schedule
+  const schedule: Schedule = [];
+  if (!horarioSala || horarioSala.trim() === '') return schedule;
 
-  // Map Portuguese day names to our format
   const dayMap: Record<string, DayOfWeek> = {
-    'SEG': 'segunda',
-    'TER': 'terça',
-    'QUA': 'quarta',
-    'QUI': 'quinta',
-    'SEX': 'sexta',
-    'SAB': 'sábado',
-  }
+    SEG: 'segunda',
+    TER: 'terça',
+    QUA: 'quarta',
+    QUI: 'quinta',
+    SEX: 'sexta',
+    SAB: 'sábado',
+  };
 
-  // Split by multiple spaces to separate different time blocks
-  const timeBlocks = horarioSala.split(/\s{2,}/).filter(block => block.trim())
+  const timeBlocks = horarioSala
+    .split(/\s{2,}/)
+    .filter((block) => block.trim());
 
   for (const block of timeBlocks) {
     try {
-      // Expected format: "TER 13-15" or "QUI 13-15"
-      const match = block.trim().match(/^([A-Z]{3})\s+(\d{1,2})-(\d{1,2})/)
+      const match = block.trim().match(/^([A-Z]{3})\s+(\d{1,2})-(\d{1,2})/);
       if (match) {
-        const [, dayStr, startStr, endStr] = match
-        const day = dayMap[dayStr]
-        const startHour = parseInt(startStr)
-        const endHour = parseInt(endStr)
+        const [, dayStr, startStr, endStr] = match;
+        const day = dayMap[dayStr];
+        const startHour = parseInt(startStr, 10);
+        const endHour = parseInt(endStr, 10);
 
-        if (day && startHour >= 0 && startHour <= 23 && endHour >= 0 && endHour <= 23 && startHour < endHour) {
-          schedule.push({
-            day,
-            startHour,
-            endHour
-          })
+        if (
+          day &&
+          !isNaN(startHour) &&
+          !isNaN(endHour) &&
+          startHour < endHour
+        ) {
+          schedule.push({ day, slot: { startHour, endHour } });
         }
       }
     } catch (error) {
-      console.warn(`Error parsing schedule block "${block}":`, error)
+      console.warn(`Error parsing schedule block "${block}":`, error);
     }
   }
 
-  return schedule
-} 
+  return schedule;
+};

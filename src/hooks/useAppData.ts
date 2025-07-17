@@ -1,75 +1,203 @@
-import { useState, useEffect } from 'react'
-import type { AppData } from '@/types'
+import { useState, useCallback, useMemo, useEffect } from 'react';
+import type { Grade, Course, AppData, PreferenceSet } from '@/types';
+import { parseCSVData } from '@/utils/csvParser';
+import { generateOptimizedGrades } from '@/utils/gradeOptimizer';
 
-export const useAppData = () => {
-  const [data, setData] = useState<AppData>({ disciplinas: [], turmas: [] })
-  const [loadError, setLoadError] = useState<string | null>(null)
+export function useAppData() {
+  // === STATE MANAGEMENT ===
+  const [view, setView] = useState<'courses' | 'grades'>('courses');
+  const [courses, setCourses] = useState<Record<string, Course>>({});
+  const [preferenceSet, setPreferenceSet] = useState<PreferenceSet>({
+    hardConstraints: [],
+    userDestCodes: [],
+  });
+  const [grades, setGrades] = useState<Grade[]>([]);
+  const [activeGrade, setActiveGrade] = useState<Grade | null>(null);
 
-  // Load data on mount
+  // === LOCALSTORAGE PERSISTENCE ===
+
+  // Load data from localStorage on initial mount
   useEffect(() => {
     try {
-      const saved = localStorage.getItem('autograde-data')
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        setData(parsed)
-        console.log('Data loaded from localStorage:', parsed)
+      const savedData = localStorage.getItem('autograde_data');
+      if (savedData) {
+        const parsed: AppData = JSON.parse(savedData);
+        // Basic validation to ensure data integrity
+        if (parsed.courses) setCourses(parsed.courses);
+        if (parsed.preferenceSet) setPreferenceSet(parsed.preferenceSet);
       }
-    } catch (e) {
-      console.error('Failed to load data from localStorage:', e)
-      setLoadError('Failed to load saved data')
+    } catch (error) {
+      console.error('Failed to load data from localStorage:', error);
+      // Optionally, you could set an error state to display a message in the UI
     }
-  }, [])
+  }, []); // Empty dependency array ensures this runs only once
 
-  // Save data whenever it changes
+  // Save data to localStorage whenever courses or preferences change
   useEffect(() => {
     try {
-      const dataString = JSON.stringify(data)
-      localStorage.setItem('autograde-data', dataString)
-      console.log('Data saved to localStorage:', data)
-      setLoadError(null)
-    } catch (e) {
-      console.error('Failed to save data to localStorage:', e)
-      setLoadError('Failed to save data')
+      const dataToSave: AppData = { courses, preferenceSet };
+      localStorage.setItem('autograde_data', JSON.stringify(dataToSave));
+    } catch (error) {
+      console.error('Failed to save data to localStorage:', error);
     }
-  }, [data])
+  }, [courses, preferenceSet]);
 
-  const exportData = () => {
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'autograde-data.json'
-    a.click()
-    URL.revokeObjectURL(url)
-  }
+  // === DATA HANDLERS ===
 
-  const importData = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) return
+  const handleDataImport = useCallback((data: AppData) => {
+    setCourses(data.courses || {});
+    setPreferenceSet(
+      data.preferenceSet || {
+        hardConstraints: [],
+        userDestCodes: [],
+      },
+    );
+  }, []);
 
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      try {
-        const imported = JSON.parse(e.target?.result as string)
-        if (imported && typeof imported === 'object' && 'disciplinas' in imported && 'turmas' in imported) {
-          setData(imported)
-          alert('Dados importados com sucesso!')
-        } else {
-          alert('Formato de arquivo inválido: campos obrigatórios ausentes')
-        }
-      } catch (error) {
-        console.error('Import error:', error)
-        alert('Formato de arquivo JSON inválido')
+  const handleJsonImport = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const content = e.target?.result;
+            if (typeof content !== 'string')
+              throw new Error('File content is not a string.');
+            const data = JSON.parse(content) as AppData;
+            handleDataImport(data);
+            // Consider using a toast notification library instead of alert()
+            alert('Dados importados com sucesso!');
+          } catch (error) {
+            console.error('Erro ao importar JSON:', error);
+            alert(
+              'Falha ao importar o arquivo JSON. Verifique o formato do arquivo.',
+            );
+          }
+        };
+        reader.readAsText(file);
+        event.target.value = ''; // Reset input to allow re-uploading the same file
       }
+    },
+    [handleDataImport],
+  );
+
+  const handleCsvImport = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const content = e.target?.result;
+            if (typeof content !== 'string')
+              throw new Error('File content is not a string.');
+            const data = parseCSVData(content);
+            // TODO: Implement a true merge instead of overwrite for existing courses
+            setCourses((prev) => ({ ...prev, ...data }));
+            alert(
+              `${Object.keys(data.classes).length} turmas e ${Object.keys(data.courses).length} disciplinas importadas com sucesso!`,
+            );
+          } catch (error) {
+            console.error('Erro ao importar CSV:', error);
+            alert(
+              `Falha ao importar o arquivo CSV: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
+            );
+          }
+        };
+        reader.readAsText(file);
+        event.target.value = '';
+      }
+    },
+    [],
+  );
+
+  const handleExport = useCallback(() => {
+    const dataToExport: AppData = { courses, preferenceSet };
+    const blob = new Blob([JSON.stringify(dataToExport, null, 2)], {
+      type: 'application/json',
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `autograde_data_${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, [courses, preferenceSet]);
+
+  const handleGenerateGrades = useCallback(() => {
+    try {
+      // TODO: Use progress callback to update UI state (e.g., for a progress bar)
+      const generated = generateOptimizedGrades(
+        courses,
+        preferenceSet.hardConstraints
+          .filter((c) => c.enabled)
+          .map((c) => c.expression),
+        preferenceSet.userDestCodes,
+        (progress) => console.log(`Progress: ${progress}%`),
+      );
+      setGrades(generated);
+      setActiveGrade(generated[0] ?? null);
+      setView('grades');
+      if (generated.length === 0) {
+        alert(
+          'Nenhuma grade pôde ser gerada com as preferências e disciplinas atuais.',
+        );
+      }
+    } catch (error) {
+      console.error('Erro ao gerar grades:', error);
+      alert(
+        `Ocorreu um erro ao gerar as grades: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
+      );
     }
-    reader.readAsText(file)
-  }
+  }, [courses, preferenceSet]);
+
+  // === DERIVED DATA ===
+
+  const coursesList = useMemo(() => Object.values(courses), [courses]);
+  const availableCourseCodes = useMemo(
+    () => coursesList.map((d) => d.code),
+    [coursesList],
+  );
+  const availableProfessors = useMemo(
+    () => [
+      ...new Set(
+        coursesList.flatMap((t) => t.classes.map((c) => c.professorName)),
+      ),
+    ],
+    [coursesList],
+  );
+  const availableDestCodes = useMemo(
+    () => [
+      ...new Set(
+        coursesList.flatMap((t) =>
+          t.classes.flatMap((c) => c.offerings.map((o) => o.destCode)),
+        ),
+      ),
+    ],
+    [coursesList],
+  );
+
+  // === RETURN VALUE ===
 
   return {
-    data,
-    setData,
-    loadError,
-    exportData,
-    importData
-  }
-} 
+    view,
+    setView,
+    courses,
+    setCourses,
+    preferenceSet,
+    setPreferenceSet,
+    grades,
+    activeGrade,
+    setActiveGrade,
+    handleJsonImport,
+    handleCsvImport,
+    handleExport,
+    handleGenerateGrades,
+    availableCourseCodes,
+    availableProfessors,
+    availableDestCodes,
+  };
+}

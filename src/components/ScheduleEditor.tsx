@@ -1,46 +1,45 @@
-import { useState } from 'react'
-import type { Schedule, ClassTime, DayOfWeek } from '@/types'
-import { DAYS } from '@/constants'
-import { formatTime } from '@utils/formatters'
+import { useState } from 'react';
+import type { Schedule, ClassTime, DayOfWeek } from '@/types';
+import { DAYS } from '@/constants';
+import { formatTime } from '@utils/formatters';
 
 interface ScheduleEditorProps {
-  schedule: Schedule
-  onChange: (schedule: Schedule) => void
+  schedule: Schedule;
+  onChange: (schedule: Schedule) => void;
 }
 
 export function ScheduleEditor({ schedule, onChange }: ScheduleEditorProps) {
-  const [newClassTime, setNewClassTime] = useState<Partial<ClassTime>>({})
+  const [newClassTime, setNewClassTime] = useState<Partial<ClassTime>>({});
 
   const addClassTime = () => {
     if (
       !newClassTime.day ||
-      newClassTime.startHour === undefined ||
-      newClassTime.endHour === undefined
+      newClassTime.slot?.startHour === undefined ||
+      newClassTime.slot?.endHour === undefined
     ) {
-      alert('Por favor, preencha todos os campos do horário.')
-      return
+      alert('Por favor, preencha todos os campos do horário.');
+      return;
     }
-    if (newClassTime.startHour >= newClassTime.endHour) {
-      alert('A hora de início deve ser anterior à hora de término.')
-      return
+    if (newClassTime.slot.startHour >= newClassTime.slot.endHour) {
+      alert('A hora de início deve ser anterior à hora de término.');
+      return;
     }
 
     const classTime: ClassTime = {
       day: newClassTime.day,
-      startHour: newClassTime.startHour,
-      endHour: newClassTime.endHour,
-    }
+      slot: newClassTime.slot,
+    };
 
-    onChange([...schedule, classTime])
-    setNewClassTime({})
-  }
+    onChange([...schedule, classTime]);
+    setNewClassTime({});
+  };
 
   const removeClassTime = (index: number) => {
-    onChange(schedule.filter((_, i) => i !== index))
-  }
+    onChange(schedule.filter((_, i) => i !== index));
+  };
 
   const inputClass =
-    'px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-full'
+    'px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-full';
 
   return (
     <div className="p-4 bg-neutral-50 rounded-lg">
@@ -51,8 +50,8 @@ export function ScheduleEditor({ schedule, onChange }: ScheduleEditorProps) {
       <div className="grid grid-cols-1 sm:grid-cols-[2fr,1fr,1fr,auto] gap-3 items-end mb-4 p-3 border rounded-md">
         <select
           value={newClassTime.day || ''}
-          onChange={e =>
-            setNewClassTime(prev => ({
+          onChange={(e) =>
+            setNewClassTime((prev) => ({
               ...prev,
               day: e.target.value as DayOfWeek,
             }))
@@ -60,7 +59,7 @@ export function ScheduleEditor({ schedule, onChange }: ScheduleEditorProps) {
           className={inputClass}
         >
           <option value="">Selecione o Dia</option>
-          {DAYS.map(day => (
+          {DAYS.map((day) => (
             <option key={day} value={day}>
               {day.charAt(0).toUpperCase() + day.slice(1)}
             </option>
@@ -71,9 +70,9 @@ export function ScheduleEditor({ schedule, onChange }: ScheduleEditorProps) {
           min="0"
           max="23"
           placeholder="Início"
-          value={newClassTime.startHour ?? ''}
-          onChange={e =>
-            setNewClassTime(prev => ({
+          value={newClassTime.slot?.startHour ?? ''}
+          onChange={(e) =>
+            setNewClassTime((prev) => ({
               ...prev,
               startHour: parseInt(e.target.value),
             }))
@@ -85,9 +84,9 @@ export function ScheduleEditor({ schedule, onChange }: ScheduleEditorProps) {
           min="1"
           max="24"
           placeholder="Término"
-          value={newClassTime.endHour ?? ''}
-          onChange={e =>
-            setNewClassTime(prev => ({
+          value={newClassTime.slot?.endHour ?? ''}
+          onChange={(e) =>
+            setNewClassTime((prev) => ({
               ...prev,
               endHour: parseInt(e.target.value),
             }))
@@ -115,7 +114,7 @@ export function ScheduleEditor({ schedule, onChange }: ScheduleEditorProps) {
             >
               <span className="font-medium text-neutral-800">
                 {ct.day.charAt(0).toUpperCase() + ct.day.slice(1)}{' '}
-                {formatTime(ct.startHour)}-{formatTime(ct.endHour)}
+                {formatTime(ct.slot.startHour)}-{formatTime(ct.slot.endHour)}
               </span>
               <button
                 onClick={() => removeClassTime(index)}
@@ -128,5 +127,5 @@ export function ScheduleEditor({ schedule, onChange }: ScheduleEditorProps) {
         </div>
       )}
     </div>
-  )
-} 
+  );
+}

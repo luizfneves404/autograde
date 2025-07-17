@@ -5,7 +5,9 @@ interface GradePreferencesProps {
   currentGrade: Grade;
 }
 
-export const GradePreferences: React.FC<GradePreferencesProps> = ({ currentGrade }) => {
+export const GradePreferences: React.FC<GradePreferencesProps> = ({
+  currentGrade,
+}) => {
   return (
     <div className="p-4 bg-neutral-50 rounded-lg border border-neutral-200 shadow-sm">
       <h4 className="text-lg font-semibold mb-3 text-neutral-800">
@@ -21,8 +23,8 @@ export const GradePreferences: React.FC<GradePreferencesProps> = ({ currentGrade
         </ul>
       ) : (
         <p className="text-sm text-neutral-500 italic">
-          Nenhuma preferência específica foi atendida por esta grade (ou as preferências ainda são
-          genéricas).
+          Nenhuma preferência específica foi atendida por esta grade (ou as
+          preferências ainda são genéricas).
         </p>
       )}
     </div>

@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "outDir": "./node_modules/.tmp",
+    "noEmit": true,
+    "allowJs": true,
+    "types": ["node"]
+  },
+  "include": [
+    "eslint.config.js", // Explicitly include your ESLint config file
+    "**/*.ts",
+    "**/*.tsx",
+    "**/*.js",
+    "**/*.jsx"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    // Exclude test files if they have separate tsconfig
+    "**/*.test.ts",
+    "**/*.spec.ts"
+  ]
+}
