@@ -57,19 +57,20 @@ export const parseCSVData = (csvContent: string): Record<string, Course> => {
         !classCode ||
         !destCode ||
         !vacancyCount ||
-        !horarioSala ||
         !distanceHours ||
         !SHFHours ||
         !preReq
       ) {
-        throw new Error('Invalid line');
+        throw new Error('Invalid line, lacking some required field');
       }
 
       const cleanCourseCode = courseCode.replace(/[^A-Z0-9]/g, '');
       const cleanClassCode = classCode.trim();
 
       if (!cleanCourseCode || !cleanClassCode) {
-        throw new Error('Invalid line');
+        throw new Error(
+          'Invalid line, cleanCourseCode or cleanClassCode is empty',
+        );
       }
 
       if (!courses[cleanCourseCode]) {
@@ -95,7 +96,7 @@ export const parseCSVData = (csvContent: string): Record<string, Course> => {
           classCode: cleanClassCode,
           courseCode: cleanCourseCode,
           professorName: professorName.trim(),
-          schedule: parseScheduleFromCSV(horarioSala),
+          schedule: horarioSala ? parseScheduleFromCSV(horarioSala) : [],
           distanceHours: parseInt(distanceHours, 10) || 0,
           SHFHours: parseInt(SHFHours, 10) || 0,
           offerings: [],
@@ -150,27 +151,22 @@ export const parseScheduleFromCSV = (horarioSala: string): Schedule => {
 
       const [, dayAbbr, startStr, endStr] = match;
       if (!dayAbbr || !startStr || !endStr) {
-        throw new Error('Invalid schedule string');
+        throw new Error('Invalid schedule string'); // shouldnt happen because it did match the regex
       }
 
       const startHour = parseInt(startStr, 10);
       const endHour = parseInt(endStr, 10);
 
-      if (
-        dayMap[dayAbbr] &&
-        !isNaN(startHour) &&
-        !isNaN(endHour) &&
-        startHour < endHour
-      ) {
-        const day = dayMap[dayAbbr];
+      const day = dayMap[dayAbbr];
+      if (day && !isNaN(startHour) && !isNaN(endHour) && startHour < endHour) {
         schedule.push({ day, slot: { startHour, endHour } });
+      } else {
+        throw new Error('Invalid schedule string');
       }
     } catch (error) {
-      if (error instanceof Error) {
-        console.warn(`Error parsing block "${block}": ${error.message}`);
-      } else {
-        console.warn(`An unknown error occurred parsing block "${block}"`);
-      }
+      console.warn(
+        `Error parsing block "${block}": ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
 
     return schedule;
