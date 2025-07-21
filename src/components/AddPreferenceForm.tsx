@@ -225,25 +225,6 @@ function getDayOfWeekArrayParam(
   return [];
 }
 
-function getTimeSlotArrayParam(params: ParamValues, name: string): TimeSlot[] {
-  const value = params[name];
-  if (Array.isArray(value)) {
-    return value as TimeSlot[];
-  }
-  return [];
-}
-
-function getDayTimeComboParam(
-  params: ParamValues,
-  name: string,
-): { day: DayOfWeek; timeSlot: TimeSlot }[] {
-  const value = params[name];
-  if (Array.isArray(value)) {
-    return value as { day: DayOfWeek; timeSlot: TimeSlot }[];
-  }
-  return [];
-}
-
 function getStringParam(params: ParamValues, name: string): string {
   const value = params[name];
   if (typeof value === 'string') {
@@ -316,48 +297,6 @@ function AddPreferenceForm({
     const newSelection = current.includes(day)
       ? current.filter((d) => d !== day)
       : [...current, day];
-    setParams((prev: ParamValues) => ({
-      ...prev,
-      [paramName]: newSelection,
-    }));
-  };
-
-  const handleTimeSlotChange = (paramName: string, timeSlot: TimeSlot) => {
-    const current = getTimeSlotArrayParam(params, paramName);
-    const existingIndex = current.findIndex(
-      (t) =>
-        t.startHour === timeSlot.startHour && t.endHour === timeSlot.endHour,
-    );
-
-    const newSelection =
-      existingIndex >= 0
-        ? current.filter((_, index) => index !== existingIndex)
-        : [...current, timeSlot];
-
-    setParams((prev: ParamValues) => ({
-      ...prev,
-      [paramName]: newSelection,
-    }));
-  };
-
-  const handleDayTimeComboChange = (
-    paramName: string,
-    day: DayOfWeek,
-    timeSlot: TimeSlot,
-  ) => {
-    const current = getDayTimeComboParam(params, paramName);
-    const existingIndex = current.findIndex(
-      (c) =>
-        c.day === day &&
-        c.timeSlot.startHour === timeSlot.startHour &&
-        c.timeSlot.endHour === timeSlot.endHour,
-    );
-
-    const newSelection =
-      existingIndex >= 0
-        ? current.filter((_, index) => index !== existingIndex)
-        : [...current, { day, timeSlot }];
-
     setParams((prev: ParamValues) => ({
       ...prev,
       [paramName]: newSelection,
