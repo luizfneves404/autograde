@@ -13,6 +13,7 @@ export default defineConfig({
       '@components': path.resolve(__dirname, './src/components'),
     },
   },
+  base: '/autograde/',
 });
 
 console.log(import.meta.url);
