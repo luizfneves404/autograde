@@ -1,5 +1,3 @@
-export type ConstraintStatus = 'SATISFIED' | 'VIOLATED' | 'PENDING';
-
 export type DayOfWeek =
   | 'segunda'
   | 'terça'
@@ -40,7 +38,7 @@ export type CourseClass = {
   offerings: ClassOffering[];
 };
 
-export type CourseClassWithCourseInfo = CourseClass & {
+export type CourseClassForEval = CourseClass & {
   numCredits: number;
   shouldHavePreRequisites: boolean;
   bidirCoRequisites: string[];
@@ -79,7 +77,17 @@ export type ExprNode =
   // ─── Class‐level Predicate ───────────────────────────
   | {
       op: '==' | '!=' | '>' | '<' | '>=' | '<=';
-      property: keyof CourseClassWithCourseInfo;
+      property: keyof CourseClassForEval;
+      value: string | number;
+    }
+  | {
+      op: 'in';
+      property: keyof CourseClassForEval;
+      value: string[] | number[];
+    }
+  | {
+      op: 'contains';
+      property: keyof CourseClassForEval;
       value: string | number;
     }
 
@@ -92,7 +100,7 @@ export type ExprNode =
   // ─── Aggregation ────────────────────────────────────
   | {
       op: 'sum'; // sum of a property, or count of classes
-      property: keyof CourseClassWithCourseInfo;
+      property: keyof CourseClassForEval;
       operator: '==' | '!=' | '>' | '<' | '>=' | '<=';
       value: number;
       predicate?: ExprNode; // optional filter on which classes to include
@@ -104,20 +112,15 @@ export type ExprNode =
       value: number;
     }
 
-  // ─── Pairwise Relation ──────────────────────────────
-  | {
-      op: 'pairwise';
-      relation: '!=' | 'overlaps';
-      property1: keyof CourseClassWithCourseInfo; // e.g. 'time' or 'professorName'
-      property2?: keyof CourseClassWithCourseInfo; // defaults to property1
-      predicate?: ExprNode; // optional filter on which classes to compare
-    }
-
   // ─── Custom Node ────────────────────────────────────
   | {
       op: 'custom';
       id: 'no_gaps_by_day';
-      params?: Record<string, unknown>;
+    }
+  | {
+      op: 'custom';
+      id: 'forbid_classes_on_days';
+      params: { days: DayOfWeek[] };
     };
 
 export type UIConstraint = {

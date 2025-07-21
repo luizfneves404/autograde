@@ -31,18 +31,17 @@ export const GradeViewer: React.FC<GradeViewerProps> = ({
     const courseClass = scheduleMap.get(key);
 
     if (!courseClass) {
-      return <td key={key} className="table-cell h-16 bg-neutral-50/50" />;
+      return <td key={key} className="p-1 bg-gray-50/50" />;
     }
 
     return (
-      <td
-        key={key}
-        className="table-cell h-16 text-center bg-white align-middle"
-      >
-        <div className="font-bold text-sm text-primary-700">
+      <td key={key} className="p-1 text-center bg-white">
+        <div className="font-bold text-xs text-primary-700 leading-tight break-all">
           {courseClass.courseCode}
         </div>
-        <div className="text-xs text-neutral-600">{courseClass.classCode}</div>
+        <div className="text-xs text-neutral-600 leading-tight break-all">
+          {courseClass.classCode}
+        </div>
       </td>
     );
   };
@@ -61,10 +60,10 @@ export const GradeViewer: React.FC<GradeViewerProps> = ({
       <div className="overflow-x-auto">
         <table className="table">
           <thead>
-            <tr className="table-header">
-              <th className="table-cell-header text-left">Hora</th>
+            <tr>
+              <th className="text-left">Hora</th>
               {DAYS.map((day) => (
-                <th key={day} className="table-cell-header text-center">
+                <th key={day} className="text-center">
                   {DAY_NAMES[day]}
                 </th>
               ))}
@@ -73,7 +72,7 @@ export const GradeViewer: React.FC<GradeViewerProps> = ({
           <tbody>
             {hourSlots.map((hour) => (
               <tr key={hour}>
-                <td className="table-cell-header text-center align-middle">
+                <td className="p-2 font-semibold text-center text-gray-700 bg-gray-100">
                   {`${hour.toString()}:00 - ${(hour + 1).toString()}:00`}
                 </td>
                 {DAYS.map((day) => renderCell(day, hour))}

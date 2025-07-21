@@ -155,7 +155,7 @@ export function useAppData() {
           .map((c) => c.expression),
         preferenceSet.userDestCodes,
         (progress) => {
-          console.log(`Progress: ${progress}%`);
+          console.log(`Progress: ${(progress * 100).toFixed(4)}%`);
         },
       );
       setGrades(generated);

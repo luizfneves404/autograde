@@ -3,7 +3,7 @@ import type { Grade, Course, PreferenceSet, CourseClass } from '@/types';
 import SearchAndAdd from './SearchAndAdd';
 import { GradeViewer } from './GradeViewer';
 import {
-  explain,
+  evaluateConstraint,
   type EvaluationResult,
   enrichClass,
 } from '@/utils/gradeOptimizer';
@@ -37,12 +37,13 @@ export const ManualGradeCreator: React.FC<ManualGradeCreatorProps> = ({
   }, [availableClasses]);
 
   const handleCheckPreferences = () => {
-    const evaluation = explain(
+    const evaluation = evaluateConstraint(
       {
         op: 'and',
         children: preferenceSet.hardConstraints.map((c) => c.expression),
       },
       displayGrade.classes.map((c) => enrichClass(c, allCourses)),
+      'explain',
     );
     setEvaluationResult(evaluation);
   };
@@ -98,7 +99,7 @@ export const ManualGradeCreator: React.FC<ManualGradeCreatorProps> = ({
                   Resultado da Análise de Preferências
                 </h3>
                 <p className="text-neutral-600">
-                  {evaluationResult.status === 'SATISFIED'
+                  {evaluationResult.satisfied
                     ? 'As preferências foram atendidas.'
                     : 'As preferências não foram atendidas.'}
                 </p>

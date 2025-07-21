@@ -3,17 +3,13 @@ import type {
   CourseClass,
   ExprNode,
   TimeSlot,
-  ConstraintStatus,
   Course,
-  CourseClassWithCourseInfo,
+  CourseClassForEval,
+  DayOfWeek,
 } from '@/types';
 
-const overlapCache = new Map<string, boolean>();
-
-// --- CONSTRAINT BUILDER FUNCTIONS (SUGAR) ---
-
 export function propertyValueIn(
-  property: keyof CourseClassWithCourseInfo,
+  property: keyof CourseClassForEval,
   values: readonly (string | number)[],
 ): ExprNode {
   if (values.length === 0) {
@@ -48,15 +44,6 @@ export function noGapsByDay(): ExprNode {
   return { op: 'custom', id: 'no_gaps_by_day' } as const;
 }
 
-export function noOverlaps(): ExprNode {
-  return {
-    op: 'pairwise',
-    relation: 'overlaps',
-    property1: 'schedule',
-    property2: 'schedule',
-  } as const;
-}
-
 export function maxCreditLoad(max: number): ExprNode {
   return {
     op: 'sum',
@@ -72,15 +59,6 @@ export function minCreditLoad(min: number): ExprNode {
     property: 'numCredits',
     operator: '>=',
     value: min,
-  } as const;
-}
-
-export function courseUnique(): ExprNode {
-  return {
-    op: 'pairwise',
-    relation: '!=',
-    property1: 'courseCode',
-    property2: 'courseCode',
   } as const;
 }
 
@@ -122,14 +100,51 @@ export function forbidEachCourse(courses: string[]): ExprNode {
   } as const;
 }
 
-// TODO: time restrictions. day of the week, any time. specific time, no day of the week. both.
+// Time restriction functions
+
+// TODO: THOSE WONT WORK BECAUSE THE < AND > OPS WONT WORK WITH SETS
+// export function forbidClassesBefore(hour: number): ExprNode {
+//   return {
+//     op: 'not',
+//     child: {
+//       op: 'some',
+//       predicate: {
+//         op: '<',
+//         property: 'schedule_start_hours',
+//         value: hour,
+//       },
+//     },
+//   } as const;
+// }
+
+// export function forbidClassesAfter(hour: number): ExprNode {
+//   return {
+//     op: 'not',
+//     child: {
+//       op: 'some',
+//       predicate: {
+//         op: '>',
+//         property: 'schedule_end_hours',
+//         value: hour,
+//       },
+//     },
+//   } as const;
+// }
+
+export function forbidClassesOnDays(days: DayOfWeek[]): ExprNode {
+  return {
+    op: 'custom',
+    id: 'forbid_classes_on_days',
+    params: { days: days },
+  } as const;
+}
 
 // --- UTILITY FUNCTIONS ---
 
 export function enrichClass(
   courseClass: CourseClass,
   allCourses: Record<string, Course>,
-): CourseClassWithCourseInfo {
+): CourseClassForEval {
   const course = allCourses[courseClass.courseCode];
   if (!course) {
     throw new Error(`Course ${courseClass.courseCode} not found`);
@@ -144,482 +159,261 @@ export function enrichClass(
   };
 }
 
-function isComparisonOperator(
-  op: string,
-): op is '==' | '!=' | '>' | '<' | '>=' | '<=' {
-  return ['==', '!=', '>', '<', '>=', '<='].includes(op);
+/**
+ * Checks if two time slots overlap
+ */
+function timeSlotsOverlap(slot1: TimeSlot, slot2: TimeSlot): boolean {
+  return slot1.startHour < slot2.endHour && slot1.endHour > slot2.startHour;
 }
 
-function assertNever(value: never): never {
-  throw new Error(
-    `Unhandled discriminated union member: ${JSON.stringify(value)}`,
-  );
-}
-
-function compare(a: number, op: string, b: number): boolean {
-  if (!isComparisonOperator(op)) {
-    throw new Error(`Invalid operator: ${op}`);
-  }
-
-  switch (op) {
-    case '==':
-      return a === b;
-    case '!=':
-      return a !== b;
-    case '>':
-      return a > b;
-    case '<':
-      return a < b;
-    case '>=':
-      return a >= b;
-    case '<=':
-      return a <= b;
-    default:
-      return assertNever(op);
-  }
-}
-
-function doSchedulesOverlap(classA: CourseClass, classB: CourseClass): boolean {
-  const idA = `${classA.courseCode}-${classA.classCode}`;
-  const idB = `${classB.courseCode}-${classB.classCode}`;
-  const cacheKey = idA < idB ? `${idA}:${idB}` : `${idB}:${idA}`;
-
-  const cached = overlapCache.get(cacheKey);
-  if (cached !== undefined) return cached;
-
-  const scheduleA = classA.schedule;
-  const scheduleB = classB.schedule;
-
-  const days = new Set([
-    ...scheduleA.map((s) => s.day),
-    ...scheduleB.map((s) => s.day),
-  ]);
-
-  for (const day of days) {
-    const slotsA = scheduleA.filter((s) => s.day === day);
-    const slotsB = scheduleB.filter((s) => s.day === day);
-    for (const slotA of slotsA) {
-      for (const slotB of slotsB) {
-        if (
-          slotA.slot.startHour < slotB.slot.endHour &&
-          slotA.slot.endHour > slotB.slot.startHour
-        ) {
-          overlapCache.set(cacheKey, true);
-          return true;
-        }
-      }
-    }
-  }
-
-  overlapCache.set(cacheKey, false);
-  return false;
-}
-
-function extractUnaryPredicates(node: ExprNode): ExprNode[] {
-  const predicates: ExprNode[] = [];
-
-  function traverse(n: ExprNode) {
-    if (n.op === 'all') {
-      predicates.push(n.predicate);
-    } else if (n.op === 'and') {
-      n.children.forEach(traverse);
-    }
-  }
-
-  traverse(node);
-  return predicates;
-}
-
-// --- UNIFIED CONSTRAINT EVALUATION ENGINE ---
-
-type EvaluationMode = 'boolean' | 'partial' | 'explain';
-
-type EvaluationContext = {
-  mode: EvaluationMode;
-  isPartialSchedule: boolean;
-  classes: readonly CourseClassWithCourseInfo[];
-};
-
-type UnifiedResult = {
-  boolean: boolean;
-  status: ConstraintStatus;
+export type EvaluationMode = 'boolean' | 'explain';
+export type EvaluationResult = {
+  satisfied: boolean;
   reasons: string[];
 };
 
-function createResult(
-  success: boolean,
-  status: ConstraintStatus,
-  reasons: string | string[] = [],
-): UnifiedResult {
-  return {
-    boolean: success,
-    status,
-    reasons: Array.isArray(reasons) ? reasons : [reasons],
-  };
-}
-
-function evalClassPredicate(
-  pred: ExprNode,
-  c: CourseClassWithCourseInfo,
-): boolean {
-  switch (pred.op) {
-    case 'and':
-      return pred.children.every((ch) => evalClassPredicate(ch, c));
-    case 'or':
-      return pred.children.some((ch) => evalClassPredicate(ch, c));
-    case 'not':
-      return !evalClassPredicate(pred.child, c);
-    case '==':
-    case '!=':
-    case '>':
-    case '<':
-    case '>=':
-    case '<=':
-      return (
-        compare(c[pred.property] as number, pred.op, pred.value as number) ||
-        (c[pred.property] === pred.value &&
-          (pred.op === '==' || pred.op === '!='))
-      );
-    default:
-      throw new Error(`Invalid class-level op ${pred.op}`);
-  }
-}
-
-// Custom constraint implementations
-const customConstraints = {
-  no_gaps_by_day: (
-    classes: readonly CourseClassWithCourseInfo[],
-    context: EvaluationContext,
-  ): UnifiedResult => {
-    type DayScheduleInfo = {
-      slot: TimeSlot;
-      classInfo: string;
-    };
-
-    const byDay = new Map<string | number, DayScheduleInfo[]>();
-
-    for (const cls of classes) {
-      for (const s of cls.schedule) {
-        const daySlots = byDay.get(s.day) ?? [];
-        daySlots.push({
-          slot: s.slot,
-          classInfo: `${cls.courseCode}-${cls.classCode}`,
-        });
-        byDay.set(s.day, daySlots);
-      }
-    }
-
-    for (const [day, daySchedule] of byDay) {
-      if (daySchedule.length < 2) continue;
-
-      daySchedule.sort((a, b) => a.slot.startHour - b.slot.startHour);
-
-      for (const [i, current] of daySchedule.entries()) {
-        const next = daySchedule[i + 1];
-        if (!next) break;
-
-        if (current.slot.endHour !== next.slot.startHour) {
-          const reason = `Schedule has a gap on day '${day.toString()}' between ${current.classInfo} (ends at ${current.slot.endHour.toString()}:00) and ${next.classInfo} (starts at ${next.slot.startHour.toString()}:00).`;
-          return createResult(false, 'VIOLATED', reason);
-        }
-      }
-    }
-
-    if (context.isPartialSchedule) {
-      return createResult(
-        true,
-        'PENDING',
-        'No gaps found in partial schedule.',
-      );
-    }
-
-    return createResult(
-      true,
-      'SATISFIED',
-      'Schedule has no gaps between classes on any day.',
-    );
-  },
-};
-
-function evaluateUnified(
+export function evaluateConstraint(
   node: ExprNode,
-  context: EvaluationContext,
-): UnifiedResult {
-  const { classes } = context;
-
-  if (classes.length === 0) {
-    return createResult(
-      true,
-      'PENDING',
-      'Empty schedule - pending evaluation.',
-    );
-  }
-
+  classes: readonly CourseClassForEval[],
+  mode: EvaluationMode = 'boolean',
+): EvaluationResult {
   switch (node.op) {
     case 'and': {
       const childResults = node.children.map((child) =>
-        evaluateUnified(child, context),
+        evaluateConstraint(child, classes, mode),
       );
 
-      if (context.mode === 'boolean') {
-        const success = childResults.every((r) => r.boolean);
-        return createResult(success, success ? 'SATISFIED' : 'VIOLATED');
+      const failedResults = childResults.filter((r) => !r.satisfied);
+      if (failedResults.length > 0) {
+        return {
+          satisfied: false,
+          reasons:
+            mode === 'explain'
+              ? failedResults.flatMap((r) => r.reasons)
+              : ['One or more AND conditions failed'],
+        };
       }
 
-      if (context.mode === 'partial') {
-        const violated = childResults.find((r) => r.status === 'VIOLATED');
-        if (violated) return violated;
-
-        const hasPending = childResults.some((r) => r.status === 'PENDING');
-        return createResult(true, hasPending ? 'PENDING' : 'SATISFIED');
-      }
-
-      // explain mode
-      const violations = childResults.filter((r) => r.status === 'VIOLATED');
-      if (violations.length > 0) {
-        const allReasons = violations.flatMap((r) => r.reasons);
-        return createResult(false, 'VIOLATED', allReasons);
-      }
-      return createResult(
-        true,
-        'SATISFIED',
-        'All sub-constraints are satisfied.',
-      );
+      return {
+        satisfied: true,
+        reasons: mode === 'explain' ? ['All AND conditions are satisfied'] : [],
+      };
     }
 
     case 'or': {
       const childResults = node.children.map((child) =>
-        evaluateUnified(child, context),
+        evaluateConstraint(child, classes, mode),
       );
 
-      if (context.mode === 'boolean') {
-        const success = childResults.some((r) => r.boolean);
-        return createResult(success, success ? 'SATISFIED' : 'VIOLATED');
+      const successfulResult = childResults.find((r) => r.satisfied);
+      if (successfulResult) {
+        return {
+          satisfied: true,
+          reasons:
+            mode === 'explain'
+              ? [
+                  `OR condition satisfied: ${successfulResult.reasons.join('; ')}`,
+                ]
+              : [],
+        };
       }
 
-      if (context.mode === 'partial') {
-        const satisfied = childResults.find((r) => r.status === 'SATISFIED');
-        if (satisfied) return satisfied;
-
-        const hasPending = childResults.some((r) => r.status === 'PENDING');
-        return createResult(false, hasPending ? 'PENDING' : 'VIOLATED');
-      }
-
-      // explain mode
-      const satisfied = childResults.find((r) => r.status === 'SATISFIED');
-      if (satisfied) {
-        return createResult(
-          true,
-          'SATISFIED',
-          'At least one sub-constraint is satisfied.',
-        );
-      }
-
-      const violationReasons = childResults.flatMap((r) => r.reasons);
-      return createResult(false, 'VIOLATED', [
-        'No sub-constraints were satisfied. Reasons for failure include:',
-        ...violationReasons.map((r) => `  - ${r}`),
-      ]);
+      return {
+        satisfied: false,
+        reasons:
+          mode === 'explain'
+            ? [
+                'No OR conditions were satisfied. All failed because:',
+                ...childResults.flatMap((r, i) => [
+                  `  Branch ${(i + 1).toString()}: ${r.reasons.join('; ')}`,
+                ]),
+              ]
+            : ['No OR conditions were met'],
+      };
     }
 
     case 'not': {
-      const childResult = evaluateUnified(node.child, context);
+      const childResult = evaluateConstraint(node.child, classes, mode);
+      return {
+        satisfied: !childResult.satisfied,
+        reasons:
+          mode === 'explain'
+            ? childResult.satisfied
+              ? [
+                  `NOT condition failed because inner condition was satisfied: ${childResult.reasons.join('; ')}`,
+                ]
+              : [
+                  `NOT condition satisfied because inner condition failed: ${childResult.reasons.join('; ')}`,
+                ]
+            : childResult.satisfied
+              ? ['NOT condition failed']
+              : [],
+      };
+    }
 
-      if (context.mode === 'boolean') {
-        return createResult(
-          !childResult.boolean,
-          childResult.boolean ? 'VIOLATED' : 'SATISFIED',
+    case 'sum': {
+      let filteredClasses = classes;
+      if (node.predicate) {
+        const predicate = node.predicate;
+        filteredClasses = classes.filter((cls) =>
+          evaluateClassPredicate(predicate, cls),
         );
       }
 
-      if (context.mode === 'partial') {
-        if (childResult.status === 'SATISFIED')
-          return createResult(false, 'VIOLATED');
-        if (childResult.status === 'VIOLATED')
-          return createResult(true, 'SATISFIED');
-        return createResult(true, 'PENDING');
+      const sum = filteredClasses.reduce((total, cls) => {
+        return total + ((cls[node.property] as number) || 0);
+      }, 0);
+
+      let satisfied = false;
+      switch (node.operator) {
+        case '<=':
+          satisfied = sum <= node.value;
+          break;
+        case '>=':
+          satisfied = sum >= node.value;
+          break;
+        case '==':
+          satisfied = sum === node.value;
+          break;
+        case '!=':
+          satisfied = sum !== node.value;
+          break;
+        case '<':
+          satisfied = sum < node.value;
+          break;
+        case '>':
+          satisfied = sum > node.value;
+          break;
       }
 
-      // explain mode
-      if (childResult.status === 'SATISFIED') {
-        return createResult(
-          false,
-          'VIOLATED',
-          `NOT constraint failed because the inner condition was met: "${childResult.reasons.join(' ')}"`,
-        );
-      }
-      return createResult(
-        true,
-        'SATISFIED',
-        `NOT constraint met because the inner condition failed: "${childResult.reasons.join(' ')}"`,
+      return {
+        satisfied,
+        reasons:
+          mode === 'explain'
+            ? [
+                satisfied
+                  ? `Sum of '${node.property}' is ${sum.toString()}, which satisfies ${node.operator} ${node.value.toString()}`
+                  : `Sum of '${node.property}' is ${sum.toString()}, which violates ${node.operator} ${node.value.toString()}`,
+                ...(node.predicate
+                  ? [
+                      `Applied to ${filteredClasses.length.toString()} filtered classes`,
+                    ]
+                  : []),
+              ]
+            : satisfied
+              ? []
+              : [
+                  `Sum ${sum.toString()} doesn't satisfy ${node.operator} ${node.value.toString()}`,
+                ],
+      };
+    }
+
+    case 'count': {
+      const matchingClasses = classes.filter((cls) =>
+        evaluateClassPredicate(node.predicate, cls),
       );
+      const count = matchingClasses.length;
+
+      let satisfied = false;
+      switch (node.operator) {
+        case '<=':
+          satisfied = count <= node.value;
+          break;
+        case '>=':
+          satisfied = count >= node.value;
+          break;
+        case '==':
+          satisfied = count === node.value;
+          break;
+        case '!=':
+          satisfied = count !== node.value;
+          break;
+        case '<':
+          satisfied = count < node.value;
+          break;
+        case '>':
+          satisfied = count > node.value;
+          break;
+      }
+
+      return {
+        satisfied,
+        reasons:
+          mode === 'explain'
+            ? [
+                satisfied
+                  ? `Count of matching classes is ${count.toString()}, which satisfies ${node.operator} ${node.value.toString()}`
+                  : `Count of matching classes is ${count.toString()}, which violates ${node.operator} ${node.value.toString()}`,
+                ...(matchingClasses.length > 0
+                  ? [
+                      `Matching classes: ${matchingClasses.map((c) => `${c.courseCode}-${c.classCode}`).join(', ')}`,
+                    ]
+                  : ['No classes matched the predicate']),
+              ]
+            : satisfied
+              ? []
+              : [
+                  `Count ${count.toString()} doesn't satisfy ${node.operator} ${node.value.toString()}`,
+                ],
+      };
     }
 
     case 'some': {
-      const satisfyingClasses = classes.filter((c) =>
-        evalClassPredicate(node.predicate, c),
+      const matchingClasses = classes.filter((cls) =>
+        evaluateClassPredicate(node.predicate, cls),
       );
-      const firstSatisfying = satisfyingClasses[0];
-      const hasSatisfying = firstSatisfying !== undefined;
+      const hasSome = matchingClasses.length > 0;
 
-      if (context.mode === 'boolean') {
-        return createResult(
-          hasSatisfying,
-          hasSatisfying ? 'SATISFIED' : 'VIOLATED',
-        );
-      }
-
-      if (context.mode === 'partial') {
-        return createResult(
-          hasSatisfying,
-          hasSatisfying ? 'SATISFIED' : 'PENDING',
-        );
-      }
-
-      // explain mode
-      if (hasSatisfying) {
-        return createResult(
-          true,
-          'SATISFIED',
-          `Condition met by class ${firstSatisfying.courseCode}-${firstSatisfying.classCode}.`,
-        );
-      }
-      return createResult(
-        false,
-        'VIOLATED',
-        'No class in the schedule satisfies the condition.',
-      );
+      return {
+        satisfied: hasSome,
+        reasons:
+          mode === 'explain'
+            ? hasSome
+              ? [
+                  `Condition satisfied by: ${matchingClasses.map((c) => `${c.courseCode}-${c.classCode}`).join(', ')}`,
+                ]
+              : ['No class in the schedule satisfies the condition']
+            : hasSome
+              ? []
+              : ['No class satisfies the condition'],
+      };
     }
 
     case 'all': {
       const failingClasses = classes.filter(
-        (c) => !evalClassPredicate(node.predicate, c),
+        (cls) => !evaluateClassPredicate(node.predicate, cls),
       );
       const allSatisfy = failingClasses.length === 0;
 
-      if (context.mode === 'boolean') {
-        return createResult(allSatisfy, allSatisfy ? 'SATISFIED' : 'VIOLATED');
-      }
-
-      if (context.mode === 'partial') {
-        return createResult(allSatisfy, allSatisfy ? 'PENDING' : 'VIOLATED');
-      }
-
-      // explain mode
-      if (!allSatisfy) {
-        const reasons = failingClasses.map(
-          (c) => `Class ${c.courseCode}-${c.classCode} fails the condition.`,
-        );
-        return createResult(false, 'VIOLATED', reasons);
-      }
-      return createResult(
-        true,
-        'SATISFIED',
-        'All classes in the schedule satisfy the condition.',
-      );
-    }
-
-    case 'sum': {
-      let pool: readonly CourseClassWithCourseInfo[];
-      if (!node.predicate) {
-        pool = classes;
-      } else {
-        const predicate = node.predicate;
-        pool = classes.filter((c) => evalClassPredicate(predicate, c));
-      }
-
-      const agg = pool.reduce(
-        (sum, c) => sum + ((c[node.property] as number) || 0),
-        0,
-      );
-      const isMet = compare(agg, node.operator, node.value);
-
-      if (context.mode === 'boolean') {
-        return createResult(isMet, isMet ? 'SATISFIED' : 'VIOLATED');
-      }
-
-      if (context.mode === 'partial') {
-        if (node.operator === '<=' || node.operator === '<') {
-          return createResult(isMet, isMet ? 'PENDING' : 'VIOLATED');
-        }
-        if (node.operator === '>=' || node.operator === '>') {
-          return createResult(isMet, isMet ? 'SATISFIED' : 'PENDING');
-        }
-        return createResult(true, 'PENDING');
-      }
-
-      // explain mode
-      const reason = `The sum of '${node.property}' is ${agg.toString()}, which ${
-        isMet ? 'satisfies' : 'violates'
-      } the condition to be ${node.operator} ${node.value.toString()}.`;
-      return createResult(isMet, isMet ? 'SATISFIED' : 'VIOLATED', reason);
-    }
-
-    case 'count': {
-      const pool = classes.filter((c) => evalClassPredicate(node.predicate, c));
-      const isMet = compare(pool.length, node.operator, node.value);
-
-      if (context.mode === 'boolean') {
-        return createResult(isMet, isMet ? 'SATISFIED' : 'VIOLATED');
-      }
-
-      if (context.mode === 'partial') {
-        if (node.operator === '<=' || node.operator === '<') {
-          return createResult(isMet, isMet ? 'PENDING' : 'VIOLATED');
-        }
-        if (node.operator === '>=' || node.operator === '>') {
-          return createResult(isMet, isMet ? 'SATISFIED' : 'PENDING');
-        }
-        return createResult(true, 'PENDING');
-      }
-
-      // explain mode
-      const reason = `The class count is ${pool.length.toString()}, which ${
-        isMet ? 'satisfies' : 'violates'
-      } the condition to be ${node.operator} ${node.value.toString()}.`;
-      return createResult(isMet, isMet ? 'SATISFIED' : 'VIOLATED', reason);
-    }
-
-    case 'pairwise': {
-      const p2 = node.property2 ?? node.property1;
-
-      for (const classA of classes) {
-        for (const classB of classes) {
-          if (classA === classB) continue;
-
-          let violated = false;
-          let reason = '';
-
-          if (node.relation === '!=') {
-            if (classA[node.property1] === classB[p2]) {
-              violated = true;
-              reason = `Classes ${classA.courseCode}-${classA.classCode} and ${classB.courseCode}-${classB.classCode} have the same '${node.property1}', which is not allowed.`;
-            }
-          } else {
-            if (doSchedulesOverlap(classA, classB)) {
-              violated = true;
-              reason = `Schedules for ${classA.courseCode}-${classA.classCode} and ${classB.courseCode}-${classB.classCode} overlap.`;
-            }
-          }
-
-          if (violated) {
-            return createResult(false, 'VIOLATED', reason);
-          }
-        }
-      }
-
-      const successReason = `No pair of classes violates the '${node.relation}' rule on property '${node.property1}'.`;
-
-      if (context.mode === 'partial') {
-        return createResult(true, 'PENDING', successReason);
-      }
-
-      return createResult(true, 'SATISFIED', successReason);
+      return {
+        satisfied: allSatisfy,
+        reasons:
+          mode === 'explain'
+            ? allSatisfy
+              ? ['All classes in the schedule satisfy the condition']
+              : [
+                  'The following classes fail the condition:',
+                  ...failingClasses.map(
+                    (c) => `  - ${c.courseCode}-${c.classCode}`,
+                  ),
+                ]
+            : allSatisfy
+              ? []
+              : [
+                  `${failingClasses.length.toString()} classes fail the condition`,
+                ],
+      };
     }
 
     case 'custom': {
-      const customFn = customConstraints[node.id];
-      return customFn(classes, context);
+      switch (node.id) {
+        case 'no_gaps_by_day':
+          return evaluateNoGapsByDay(classes, mode);
+        case 'forbid_classes_on_days':
+          return evaluateForbidClassesOnDays(classes, mode, node.params);
+        default:
+          throw new Error(`Unsupported custom node: ${JSON.stringify(node)}`);
+      }
     }
 
     case '==':
@@ -628,286 +422,399 @@ function evaluateUnified(
     case '<':
     case '>=':
     case '<=':
+    case 'in':
+    case 'contains':
       throw new Error(
         `Cannot evaluate standalone comparison operator '${node.op}' at the top level.`,
       );
 
     default:
-      return assertNever(node);
+      throw new Error(
+        `Unsupported constraint operation: ${JSON.stringify(node)}`,
+      );
+  }
+
+  return {
+    satisfied: true,
+    reasons: mode === 'explain' ? ['Constraint satisfied'] : [],
+  };
+}
+
+function evaluateClassPredicate(
+  predicate: ExprNode,
+  cls: CourseClassForEval,
+): boolean {
+  switch (predicate.op) {
+    case 'and':
+      return predicate.children.every((child) =>
+        evaluateClassPredicate(child, cls),
+      );
+    case 'or':
+      return predicate.children.some((child) =>
+        evaluateClassPredicate(child, cls),
+      );
+    case 'not':
+      return !evaluateClassPredicate(predicate.child, cls);
+    case '==':
+      return cls[predicate.property] === predicate.value;
+    case '!=':
+      return cls[predicate.property] !== predicate.value;
+    case '>':
+      return (cls[predicate.property] as number) > (predicate.value as number);
+    case '<':
+      return (cls[predicate.property] as number) < (predicate.value as number);
+    case '>=':
+      return (cls[predicate.property] as number) >= (predicate.value as number);
+    case '<=':
+      return (cls[predicate.property] as number) <= (predicate.value as number);
+    // case 'in': {
+    //   const value = predicate.value;
+
+    //   if (value instanceof Set) {
+    //     return value.has(cls[predicate.property] as string | number);
+    //   } else {
+    //     throw new Error(
+    //       `Unsupported value type for 'in' predicate: ${typeof value}`,
+    //     );
+    //   }
+    // }
+    // case 'contains':
+    //   if (cls[predicate.property] instanceof Set) {
+    //     return (cls[predicate.property] as Set<string | number>).has(
+    //       predicate.value,
+    //     );
+    //   } else {
+    //     throw new Error(
+    //       `Unsupported value type for 'contains' predicate: ${typeof cls[predicate.property]}`,
+    //     );
+    //   }
+    default:
+      throw new Error(`Unsupported predicate operation: ${predicate.op}`);
   }
 }
 
-// --- PUBLIC API FUNCTIONS ---
-
-export function evaluate(
-  node: ExprNode,
-  S: readonly CourseClassWithCourseInfo[],
-): boolean {
-  const context: EvaluationContext = {
-    mode: 'boolean',
-    isPartialSchedule: false,
-    classes: S,
-  };
-  return evaluateUnified(node, context).boolean;
-}
-
-export function evaluatePartial(
-  node: ExprNode,
-  S: readonly CourseClassWithCourseInfo[],
-): ConstraintStatus {
-  const context: EvaluationContext = {
-    mode: 'partial',
-    isPartialSchedule: true,
-    classes: S,
-  };
-  return evaluateUnified(node, context).status;
-}
-
-export type EvaluationResult = {
-  status: 'SATISFIED' | 'VIOLATED';
-  reasons: string[];
-};
-
-export function explain(
-  node: ExprNode,
-  S: readonly CourseClassWithCourseInfo[],
+function evaluateForbidClassesOnDays(
+  classes: readonly CourseClassForEval[],
+  mode: EvaluationMode = 'boolean',
+  params: { days: DayOfWeek[] },
 ): EvaluationResult {
-  const context: EvaluationContext = {
-    mode: 'explain',
-    isPartialSchedule: false,
-    classes: S,
-  };
-  const result = evaluateUnified(node, context);
+  const days = params.days;
+  const daysSet = new Set(days);
+
+  for (const cls of classes) {
+    for (const classTime of cls.schedule) {
+      if (daysSet.has(classTime.day)) {
+        return {
+          satisfied: false,
+          reasons: [
+            `Class ${cls.courseCode}-${cls.classCode} on day ${classTime.day}`,
+          ],
+        };
+      }
+    }
+  }
+
   return {
-    status: result.status as 'SATISFIED' | 'VIOLATED',
-    reasons: result.reasons,
+    satisfied: true,
+    reasons: mode === 'explain' ? ['No classes on forbidden days'] : [],
   };
 }
 
-// --- SYSTEM CONSTRAINTS ---
+function evaluateNoGapsByDay(
+  classes: readonly CourseClassForEval[],
+  mode: EvaluationMode = 'boolean',
+): EvaluationResult {
+  const byDay = new Map<
+    DayOfWeek,
+    { start: number; end: number; classInfo: string }[]
+  >();
+
+  // Group schedule items by day
+  for (const cls of classes) {
+    for (const scheduleItem of cls.schedule) {
+      const daySchedule = byDay.get(scheduleItem.day) ?? [];
+      daySchedule.push({
+        start: scheduleItem.slot.startHour,
+        end: scheduleItem.slot.endHour,
+        classInfo: `${cls.courseCode}-${cls.classCode}`,
+      });
+      byDay.set(scheduleItem.day, daySchedule);
+    }
+  }
+
+  const gapsFound: string[] = [];
+  const continuousDays: string[] = [];
+
+  // Check for gaps on each day
+  for (const [day, daySchedule] of byDay) {
+    if (daySchedule.length < 2) {
+      if (mode === 'explain') {
+        continuousDays.push(`${day}: Only one class, no gaps possible`);
+      }
+      continue;
+    }
+
+    daySchedule.sort((a, b) => a.start - b.start);
+
+    let hasGap = false;
+    for (const [i, current] of daySchedule.entries()) {
+      const next = daySchedule[i + 1];
+      if (!next) break;
+
+      if (current.end !== next.start) {
+        hasGap = true;
+        const gap = `Gap on ${day} between ${current.classInfo} (ends ${current.end.toString()}:00) and ${next.classInfo} (starts ${next.start.toString()}:00)`;
+        gapsFound.push(gap);
+
+        if (mode === 'boolean') break; // Early exit for boolean mode
+      }
+    }
+
+    if (!hasGap && mode === 'explain') {
+      const classNames = daySchedule.map((s) => s.classInfo).join(' → ');
+      continuousDays.push(`${day}: Continuous schedule (${classNames})`);
+    }
+  }
+
+  const satisfied = gapsFound.length === 0;
+
+  return {
+    satisfied,
+    reasons:
+      mode === 'explain'
+        ? satisfied
+          ? ['No gaps found in schedule', ...continuousDays]
+          : ['Gaps found in schedule:', ...gapsFound.map((gap) => `  - ${gap}`)]
+        : satisfied
+          ? []
+          : [gapsFound[0] || 'Schedule has gaps'],
+  };
+}
 
 const systemConstraints: ExprNode[] = [
-  noOverlaps(),
-  maxCreditLoad(30),
-  courseUnique(),
+  { op: 'sum', property: 'numCredits', operator: '<=', value: 30 },
+  // no need for overlap checks or course uniqueness, they're guaranteed by construction
 ];
 
-// --- MAIN GRADE GENERATION LOGIC ---
-
+/**
+ * DO NOT DELETE THIS, ALWAYS WRITE IT AGAIN.
+ * Generates optimized grades based on the given constraints.
+ * HAS TO GUARANTEE NO OVERLAPS, UNIQUE COURSECODES, AND LESS THAN 30 CREDITS TOTAL.
+ * ALSO MUST SATISFY ALL USER PREFERENCES.
+ * ALSO, MUST BE FAST FOR THE TYPICAL USE CASE:
+ * - low thousands of courses
+ * - each course has ~4 classes
+ * - each class has ~4 offerings
+ * - class schedules are uniformly distributed across the weekdays, focusing on the 07-19h hour range of the days
+ * - user preferences are typically constraints following the sugar functions above.
+ *
+ * @param allCourses - The courses to generate grades for.
+ * @param userPreferences - The user preferences for the grades.
+ * @param userDestCodes - The user destination codes for the grades.
+ * @param onProgress - The function to call with the progress of the generation.
+ * @returns The optimized grades.
+ */
 export const generateOptimizedGrades = (
   allCourses: Record<string, Course>,
   userPreferences: ExprNode[],
   userDestCodes: string[],
   onProgress?: (progress: number) => void,
 ): Grade[] => {
-  console.groupCollapsed(
-    `[GradeGenerator] 🚀 Starting Grade Generation Process`,
-  );
-  console.info(
-    `Received ${Object.keys(allCourses).length.toString()} courses.`,
-  );
-  console.info(
-    `Received ${userPreferences.length.toString()} user preferences.`,
-  );
-  console.info(`Filtering for destination codes:`, userDestCodes);
-  console.groupEnd();
+  console.log('[OptimizedGenerator] 🚀 Starting course-first generation');
 
+  // Phase 1: Group available classes by course (enforces uniqueness by construction)
+  const courseToClasses = new Map<string, CourseClassForEval[]>();
+
+  Object.values(allCourses).forEach((course) => {
+    const availableClasses = course.classes
+      .map((cls) => enrichClass(cls, allCourses))
+      .filter((cls) =>
+        cls.offerings.some(
+          (offering) =>
+            userDestCodes.includes(offering.destCode) &&
+            offering.vacancyCount > 0,
+        ),
+      );
+
+    if (availableClasses.length > 0) {
+      courseToClasses.set(course.code, availableClasses);
+    }
+  });
+
+  console.log(
+    `[OptimizedGenerator] 📚 ${courseToClasses.size.toString()} courses have available classes`,
+  );
+
+  // Phase 2: Early filtering based on user constraints
+  const availableCourses = Array.from(courseToClasses.keys());
+  const filteredCourses = filterCoursesByConstraints(
+    availableCourses,
+    userPreferences,
+  );
+
+  console.log(
+    `[OptimizedGenerator] 🎯 ${filteredCourses.length.toString()} courses pass initial filtering`,
+  );
+
+  // Phase 3: Generate course combinations (much smaller search space)
+  const solutions: Grade[] = [];
+  let combinationsChecked = 0;
+
+  const maxCourseCombinations = Math.pow(2, filteredCourses.length);
+
+  console.log(
+    `[OptimizedGenerator] 🎯 ${maxCourseCombinations.toString()} course combinations to check`,
+  );
+
+  // Generate all possible course subsets
+  const generateCourseSubsets = (
+    courseIndex: number,
+    selectedCourses: string[],
+  ) => {
+    if (courseIndex === filteredCourses.length) {
+      if (selectedCourses.length === 0) return;
+
+      // Early credit check
+      const minCredits = selectedCourses.reduce((sum, courseCode) => {
+        const course = allCourses[courseCode];
+        return sum + (course?.numCredits || 0);
+      }, 0);
+
+      if (minCredits > 30) return; // Skip if definitely over limit
+
+      // Phase 4: For each course subset, find compatible class combinations
+      findCompatibleClassCombinations(selectedCourses, solutions);
+      combinationsChecked++;
+
+      if (onProgress && combinationsChecked % 1000 === 0) {
+        onProgress(combinationsChecked / maxCourseCombinations);
+      }
+      return;
+    }
+
+    const course = filteredCourses[courseIndex];
+    if (!course) return;
+
+    // Don't include this course
+    generateCourseSubsets(courseIndex + 1, selectedCourses);
+
+    // Include this course (if it has classes)
+    if (courseToClasses.has(course)) {
+      selectedCourses.push(course);
+      generateCourseSubsets(courseIndex + 1, selectedCourses);
+      selectedCourses.pop();
+    }
+  };
+
+  const findCompatibleClassCombinations = (
+    selectedCourses: string[],
+    solutions: Grade[],
+  ) => {
+    // Get all class options for selected courses
+    const classOptionsByCourse = selectedCourses.map((courseCode) => {
+      return courseToClasses.get(courseCode) || [];
+    });
+
+    // Generate all class combinations (one class per course)
+    const generateClassCombinations = (
+      courseIndex: number,
+      currentClasses: CourseClassForEval[],
+    ) => {
+      if (courseIndex === classOptionsByCourse.length) {
+        // Check if this combination is conflict-free and satisfies constraints
+        if (isValidClassCombination(currentClasses, userPreferences)) {
+          solutions.push({ classes: [...currentClasses] });
+        }
+        return;
+      }
+
+      const classOptions = classOptionsByCourse[courseIndex];
+      if (!classOptions) return;
+
+      for (const classOption of classOptions) {
+        // Early conflict detection
+        if (hasTimeConflict(currentClasses, classOption)) continue;
+
+        currentClasses.push(classOption);
+        generateClassCombinations(courseIndex + 1, currentClasses);
+        currentClasses.pop();
+      }
+    };
+
+    generateClassCombinations(0, []);
+  };
+
+  generateCourseSubsets(0, []);
+
+  if (onProgress) onProgress(1);
+
+  console.log(
+    `[OptimizedGenerator] ✅ Found ${solutions.length.toString()} valid grades`,
+  );
+  console.log(
+    `[OptimizedGenerator] 📊 Checked ${combinationsChecked.toString()} course combinations`,
+  );
+
+  return solutions;
+};
+
+function filterCoursesByConstraints(
+  availableCourses: string[],
+  userPreferences: ExprNode[],
+): string[] {
+  // Quick filtering based on availableCourses and minimumCoursesSet constraints
+  for (const constraint of userPreferences) {
+    if (constraint.op === 'all' && constraint.predicate.op === 'or') {
+      // This is an availableCourses constraint
+      const allowedCourses = constraint.predicate.children
+        .map((child) => {
+          if (child.op === '==' && child.property === 'courseCode') {
+            return child.value as string;
+          }
+          return null;
+        })
+        .filter((code) => code !== null)
+        .filter((code) => availableCourses.includes(code));
+      return allowedCourses;
+    }
+  }
+
+  return availableCourses;
+}
+
+function hasTimeConflict(
+  existingClasses: CourseClassForEval[],
+  newClass: CourseClassForEval,
+): boolean {
+  for (const existing of existingClasses) {
+    for (const existingSchedule of existing.schedule) {
+      for (const newSchedule of newClass.schedule) {
+        if (
+          existingSchedule.day === newSchedule.day &&
+          timeSlotsOverlap(existingSchedule.slot, newSchedule.slot)
+        ) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
+function isValidClassCombination(
+  classes: CourseClassForEval[],
+  userPreferences: ExprNode[],
+): boolean {
+  // Quick credit check first
+  const totalCredits = classes.reduce((sum, cls) => sum + cls.numCredits, 0);
+  if (totalCredits > 30) return false;
+
+  // Full constraint evaluation
   const allConstraintsNode: ExprNode = {
     op: 'and',
     children: [...systemConstraints, ...userPreferences],
   };
-  // TODO: add the constraints that are intrinsic to the courses, like co requisites, etc.
-  const solutions: Grade[] = [];
 
-  const allClasses = Object.values(allCourses).flatMap(
-    (course) => course.classes,
-  );
-  const allClassesWithCourseInfo: CourseClassWithCourseInfo[] = allClasses.map(
-    (courseClass) => enrichClass(courseClass, allCourses),
-  );
-
-  // Pre-filtering by destination & vacancy
-  const filteredClasses = allClassesWithCourseInfo.filter((courseClass) =>
-    courseClass.offerings.some(
-      (offering) =>
-        userDestCodes.includes(offering.destCode) && offering.vacancyCount > 0,
-    ),
-  );
-
-  console.log(
-    `[GradeGenerator] 篩 Initial Filter: ${allClasses.length.toString()} classes -> ${filteredClasses.length.toString()} classes after filtering by destination and vacancy.`,
-  );
-
-  if (filteredClasses.length === 0) {
-    console.error(
-      '[GradeGenerator] ❌ No classes available for the selected destinations with vacancies. Cannot generate grades.',
-    );
-    return [];
-  }
-
-  // Pre-filter classes based on unary constraints
-  const unaryPredicates = extractUnaryPredicates(allConstraintsNode);
-  const combinedUnaryPredicate: ExprNode = {
-    op: 'and',
-    children: unaryPredicates,
-  };
-
-  let viableClasses: CourseClassWithCourseInfo[];
-  if (unaryPredicates.length > 0) {
-    console.groupCollapsed(
-      `[GradeGenerator] 🔍 Applying ${unaryPredicates.length.toString()} unary (single-class) constraints...`,
-    );
-    viableClasses = filteredClasses.filter((courseClass) => {
-      const isViable = evalClassPredicate(combinedUnaryPredicate, courseClass);
-      if (!isViable) {
-        console.log(
-          `  -> ❌ Filtering out ${courseClass.courseCode} - ${courseClass.classCode}`,
-        );
-      }
-      return isViable;
-    });
-    console.groupEnd();
-    console.warn(
-      `[GradeGenerator] Unary Filter: ${filteredClasses.length.toString()} classes -> ${viableClasses.length.toString()} classes after applying unary constraints.`,
-    );
-  } else {
-    console.log('[GradeGenerator] No unary constraints to apply.');
-    viableClasses = filteredClasses;
-  }
-
-  if (viableClasses.length === 0) {
-    console.error(
-      '[GradeGenerator] ❌ All classes were filtered out by unary constraints. Cannot generate grades.',
-    );
-    return [];
-  }
-
-  // Clear memoization cache
-  overlapCache.clear();
-
-  // Group by course and sort
-  const courseGroups: CourseClassWithCourseInfo[][] = Array.from(
-    Map.groupBy(viableClasses, (c) => c.courseCode).values(),
-  ).sort((a, b) => a.length - b.length);
-
-  console.log(
-    `[GradeGenerator] 📚 Grouped viable classes into ${courseGroups.length.toString()} courses. Sorted groups by size to optimize pruning.`,
-  );
-
-  // Backtracking search
-  const totalCombinations = courseGroups.reduce(
-    (acc, group) => acc * (group.length + 1),
-    1,
-  );
-  console.info(
-    `[GradeGenerator] 🧠 Starting backtracking search. Max potential combinations: ~${totalCombinations.toExponential(2)}.`,
-  );
-  let combinationsChecked = 0;
-
-  function findCombinations(
-    groupIndex: number,
-    currentGrade: CourseClassWithCourseInfo[],
-  ) {
-    const gradeCodes = currentGrade.map(
-      (c) => `${c.courseCode}-${c.classCode}`,
-    );
-    console.groupCollapsed(
-      `[Recursion] Depth: ${groupIndex.toString()}, Current Grade: [${gradeCodes.join(', ')}]`,
-    );
-
-    // Base case
-    if (groupIndex === courseGroups.length) {
-      combinationsChecked++;
-      if (onProgress) {
-        onProgress(combinationsChecked / totalCombinations);
-      }
-
-      console.log(
-        `[Base Case] Reached end of path. Final evaluation for [${gradeCodes.join(', ')}]...`,
-      );
-
-      if (
-        currentGrade.length > 0 &&
-        evaluate(allConstraintsNode, currentGrade)
-      ) {
-        solutions.push({
-          classes: [...currentGrade],
-        });
-        console.log(
-          `%c🎉 SOLUTION FOUND! Added grade with ${currentGrade.length.toString()} classes.`,
-          'color: #28a745; font-weight: bold;',
-        );
-      } else {
-        console.log(` -> Final combination is invalid or empty.`);
-      }
-      console.groupEnd();
-      return;
-    }
-
-    const currentGroup = courseGroups[groupIndex];
-    if (!currentGroup || currentGroup[0] === undefined) {
-      throw new Error(
-        'Did not expect to have no current group or an empty group',
-      );
-    }
-
-    const courseCode = currentGroup[0].courseCode;
-
-    // Path 1: Skip this course group
-    console.log(
-      `Path 1: Skipping course group ${courseCode} (contains ${currentGroup.length.toString()} classes)`,
-    );
-    findCombinations(groupIndex + 1, currentGrade);
-
-    // Path 2: Try each class from current group
-    for (const courseClass of currentGroup) {
-      console.log(
-        `Path 2: Trying to add ${courseClass.courseCode} - ${courseClass.classCode}...`,
-      );
-      currentGrade.push(courseClass);
-
-      // Pruning logic using unified evaluation
-      const status = evaluatePartial(allConstraintsNode, currentGrade);
-
-      if (status !== 'VIOLATED') {
-        console.log(
-          ` -> Status: ${status}. Looks good, proceeding to next level.`,
-        );
-        findCombinations(groupIndex + 1, currentGrade);
-      } else {
-        const remainingGroups = courseGroups.slice(groupIndex + 1);
-        const prunedCount = remainingGroups.reduce(
-          (acc, group) => acc * (group.length + 1),
-          1,
-        );
-        combinationsChecked += prunedCount;
-        console.warn(
-          `%c -> ✂️ PRUNED! Violation detected. Skipping ~${prunedCount.toExponential(2)} combinations.`,
-          'color: #dc3545;',
-        );
-      }
-
-      currentGrade.pop();
-    }
-
-    console.groupEnd();
-  }
-
-  findCombinations(0, []);
-  if (onProgress) onProgress(1);
-
-  console.info(
-    `[GradeGenerator] ✅ Search Complete. Found ${solutions.length.toString()} valid grade(s).`,
-  );
-
-  if (solutions.length === 0) {
-    console.warn(
-      `[GradeGenerator] SUMMARY: No solutions were found. Check the logs above. Common reasons include:
-      1. No classes matched your destination codes or had vacancies.
-      2. Overly strict user preferences filtered out all classes or combinations.
-      3. Conflicting class schedules (time overlaps).`,
-    );
-  }
-
-  return solutions;
-};
+  const result = evaluateConstraint(allConstraintsNode, classes, 'boolean');
+  return result.satisfied;
+}

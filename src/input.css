@@ -136,19 +136,23 @@
 
   /* === TABLE COMPONENTS === */
   .table {
-    @apply w-full border-collapse;
+    @apply w-full border-collapse text-sm;
   }
 
-  .table-header {
-    @apply bg-gray-100 border-b border-gray-200;
+  /* Base styles for ALL cells (header and body) */
+  .table th,
+  .table td {
+    @apply border border-gray-200 p-3 text-left align-middle;
   }
 
-  .table-cell {
-    @apply p-3 border border-gray-200 text-sm;
+  /* Specific styles for header cells ONLY */
+  .table th {
+    @apply bg-gray-100 font-semibold text-gray-800;
   }
 
-  .table-cell-header {
-    @apply p-3 border border-gray-200 text-sm font-semibold text-gray-700 bg-gray-50;
+  /* Optional: Add a hover effect for body rows for better UX */
+  .table tbody tr:hover {
+    @apply bg-gray-50;
   }
 
   /* === BADGE COMPONENTS === */
