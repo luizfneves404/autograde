@@ -5,7 +5,7 @@ import { generateOptimizedGrades } from '@/utils/gradeOptimizer';
 
 export function useAppData() {
   // === STATE MANAGEMENT ===
-  const [view, setView] = useState<'courses' | 'grades'>('courses');
+  const [view, setView] = useState<'courses' | 'grades' | 'manual'>('courses');
   const [courses, setCourses] = useState<Record<string, Course>>({});
   const [preferenceSet, setPreferenceSet] = useState<PreferenceSet>({
     hardConstraints: [],
@@ -92,12 +92,30 @@ export function useAppData() {
             const content = e.target?.result;
             if (typeof content !== 'string')
               throw new Error('File content is not a string.');
-            const data = parseCSVData(content);
-            // TODO: Implement a true merge instead of overwrite for existing courses
-            setCourses((prev) => ({ ...prev, ...data }));
-            alert(
-              `${Object.keys(data.classes).length} turmas e ${Object.keys(data.courses).length} disciplinas importadas com sucesso!`,
+            const coursesFromCsv = parseCSVData(content);
+
+            const courseCount = Object.keys(coursesFromCsv).length;
+
+            const classCount = Object.values(coursesFromCsv).reduce(
+              (total, course) => total + course.classes.length,
+              0,
             );
+            const classOfferingCount = Object.values(coursesFromCsv).reduce(
+              (total, course) =>
+                total +
+                course.classes.reduce(
+                  (classTotal, c) => classTotal + c.offerings.length,
+                  0,
+                ),
+              0,
+            );
+
+            alert(
+              `${courseCount} disciplinas, ${classCount} turmas e ${classOfferingCount} ofertas de turmas importadas com sucesso!`,
+            );
+
+            // TODO: Implement a true merge instead of overwrite for existing courses
+            setCourses((prev) => ({ ...prev, ...coursesFromCsv }));
           } catch (error) {
             console.error('Erro ao importar CSV:', error);
             alert(
@@ -136,7 +154,9 @@ export function useAppData() {
           .filter((c) => c.enabled)
           .map((c) => c.expression),
         preferenceSet.userDestCodes,
-        (progress) => console.log(`Progress: ${progress}%`),
+        (progress) => {
+          console.log(`Progress: ${progress}%`);
+        },
       );
       setGrades(generated);
       setActiveGrade(generated[0] ?? null);
@@ -157,10 +177,10 @@ export function useAppData() {
   // === DERIVED DATA ===
 
   const coursesList = useMemo(() => Object.values(courses), [courses]);
-  const availableCourseCodes = useMemo(
-    () => coursesList.map((d) => d.code),
-    [coursesList],
-  );
+  const availableCourseCodes = useMemo(() => Object.keys(courses), [courses]);
+  const availableClasses = useMemo(() => {
+    return coursesList.flatMap((d) => d.classes);
+  }, [coursesList]);
   const availableProfessors = useMemo(
     () => [
       ...new Set(
@@ -197,6 +217,7 @@ export function useAppData() {
     handleExport,
     handleGenerateGrades,
     availableCourseCodes,
+    availableClasses,
     availableProfessors,
     availableDestCodes,
   };

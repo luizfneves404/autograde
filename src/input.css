@@ -110,7 +110,7 @@
   }
 
   .card-header {
-    @apply bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6 border-b border-gray-200;
+    @apply bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6 border-b;
   }
 
   .card-body {
@@ -118,7 +118,7 @@
   }
 
   .card-footer {
-    @apply bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6 border-t border-gray-200 bg-gray-50/50;
+    @apply rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6 border-t bg-gray-50/50;
   }
 
   /* === NAVIGATION COMPONENTS === */
@@ -131,7 +131,7 @@
   }
 
   .nav-item-active {
-    @apply px-4 py-2 rounded-md font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors duration-150 bg-blue-100 text-blue-700;
+    @apply px-4 py-2 rounded-md font-medium hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors duration-150 bg-blue-100 text-blue-700;
   }
 
   /* === TABLE COMPONENTS === */

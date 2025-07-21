@@ -40,76 +40,68 @@ export function ClassEditor({
     }
   };
 
-  const inputClass =
-    'px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-full';
-
   return (
     <div className="p-4 bg-neutral-50 rounded-lg border border-blue-200">
       <h5 className="text-lg font-semibold mb-4 text-neutral-800">
         Editing Class: {courseClass.classCode} ({courseClass.courseCode})
       </h5>
       <div className="grid gap-4">
-        {/* These fields are correct as they exist directly on CourseClass */}
         <div className="grid md:grid-cols-2 gap-4">
           <input
             value={edited.classCode}
-            onChange={(e) =>
-              setEdited((prev) => ({ ...prev, classCode: e.target.value }))
-            }
+            onChange={(e) => {
+              setEdited((prev) => ({ ...prev, classCode: e.target.value }));
+            }}
             placeholder="Class Code"
-            className={inputClass}
+            className="input"
           />
           <input
             value={edited.professorName}
-            onChange={(e) =>
-              setEdited((prev) => ({ ...prev, professorName: e.target.value }))
-            }
+            onChange={(e) => {
+              setEdited((prev) => ({ ...prev, professorName: e.target.value }));
+            }}
             placeholder="Professor Name"
-            className={inputClass}
+            className="input"
           />
         </div>
 
-        {/* These fields now point to the first offering */}
         <div className="grid md:grid-cols-2 gap-4">
           <input
             value={edited.offerings[0]?.destCode || ''}
-            onChange={(e) => handleOfferingChange('destCode', e.target.value)}
+            onChange={(e) => {
+              handleOfferingChange('destCode', e.target.value);
+            }}
             placeholder="Código de destino"
-            className={inputClass}
+            className="input"
           />
           <input
             type="number"
             min="0"
             value={edited.offerings[0]?.vacancyCount || ''}
-            onChange={(e) =>
+            onChange={(e) => {
               handleOfferingChange(
                 'vacancyCount',
                 parseInt(e.target.value, 10) || 0,
-              )
-            }
+              );
+            }}
             placeholder="Vagas"
-            className={inputClass}
+            className="input"
           />
         </div>
 
-        {/* The ScheduleEditor remains the same */}
         <ScheduleEditor
           schedule={edited.schedule}
-          onChange={(schedule) => setEdited((prev) => ({ ...prev, schedule }))}
+          onChange={(schedule) => {
+            setEdited((prev) => ({ ...prev, schedule }));
+          }}
         />
 
         <div className="flex justify-end gap-4 mt-4">
-          <button
-            onClick={onCancel}
-            className="px-4 py-2 bg-neutral-200 text-neutral-800 rounded-md hover:bg-neutral-300"
-          >
-            Cancel
+          <button onClick={onCancel} className="btn btn-secondary">
+            Cancelar
           </button>
-          <button
-            onClick={handleSave}
-            className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
-          >
-            Save Changes
+          <button onClick={handleSave} className="btn btn-primary">
+            Salvar Alterações
           </button>
         </div>
       </div>

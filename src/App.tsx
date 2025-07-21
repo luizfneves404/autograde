@@ -2,6 +2,7 @@ import { useAppData } from '@/hooks/useAppData';
 import { GradeManager } from '@components/GradeManager';
 import { CourseManager } from '@components/CourseManager';
 import { PreferenceManager } from '@components/PreferenceManager';
+import { ManualGradeCreator } from '@components/ManualGradeCreator';
 
 function App() {
   // Call the hook to get all state and logic
@@ -20,6 +21,7 @@ function App() {
     handleExport,
     handleGenerateGrades,
     availableCourseCodes,
+    availableClasses,
     availableProfessors,
     availableDestCodes,
   } = useAppData();
@@ -40,16 +42,29 @@ function App() {
         {/* Tab Buttons */}
         <div className="flex gap-2">
           <button
-            onClick={() => setView('courses')}
+            onClick={() => {
+              setView('courses');
+            }}
             className={view === 'courses' ? 'nav-item-active' : 'nav-item'}
           >
             Gerenciar Disciplinas
           </button>
           <button
-            onClick={() => setView('grades')}
+            onClick={() => {
+              setView('grades');
+            }}
             className={view === 'grades' ? 'nav-item-active' : 'nav-item'}
           >
             Preferências &amp; Grades
+          </button>
+          {/* New Tab Button for Manual Grade Creation */}
+          <button
+            onClick={() => {
+              setView('manual');
+            }}
+            className={view === 'manual' ? 'nav-item-active' : 'nav-item'}
+          >
+            Criar Grade Manual
           </button>
         </div>
 
@@ -101,12 +116,21 @@ function App() {
               <PreferenceManager
                 preferenceSet={preferenceSet}
                 onPreferenceSetChange={setPreferenceSet}
-                availableCourses={availableCourseCodes}
+                availableCourseCodes={availableCourseCodes}
                 availableProfessors={availableProfessors}
                 availableDestCodes={availableDestCodes}
               />
             </div>
           </div>
+        )}
+
+        {/* New View for Manual Grade Creation */}
+        {view === 'manual' && (
+          <ManualGradeCreator
+            allCourses={courses}
+            availableClasses={availableClasses}
+            preferenceSet={preferenceSet}
+          />
         )}
       </main>
     </div>

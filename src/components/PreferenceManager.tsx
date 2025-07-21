@@ -1,14 +1,15 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import type { PreferenceSet, UIConstraint } from '@/types';
 import AddPreferenceForm from '@components/AddPreferenceForm';
 import PreferenceCard from './PreferenceCard';
+import { getDestCodeName } from '@/utils/destCodes';
 
 interface PreferenceManagerProps {
   preferenceSet: PreferenceSet;
   onPreferenceSetChange: (preferenceSet: PreferenceSet) => void;
   availableDestCodes: string[];
   availableProfessors: string[];
-  availableCourses: string[];
+  availableCourseCodes: string[];
 }
 
 export function PreferenceManager({
@@ -16,8 +17,13 @@ export function PreferenceManager({
   onPreferenceSetChange,
   availableDestCodes,
   availableProfessors,
-  availableCourses,
+  availableCourseCodes,
 }: PreferenceManagerProps) {
+  // --- Local state for managing DestCode selection before saving ---
+  const [pendingDestCodes, setPendingDestCodes] = useState<string[]>(
+    preferenceSet.userDestCodes,
+  );
+
   // --- Handlers for Hard Constraints ---
   const addConstraint = (constraint: UIConstraint) => {
     onPreferenceSetChange({
@@ -51,18 +57,31 @@ export function PreferenceManager({
     }
   };
 
-  // --- Handler for userDestCodes ---
-  const handleDestCodeChange = (
-    event: React.ChangeEvent<HTMLSelectElement>,
-  ) => {
-    const selectedCodes = Array.from(
-      event.target.selectedOptions,
-      (option) => option.value,
+  // --- Handlers for userDestCodes ---
+
+  // Sorts the available codes alphabetically by their friendly name
+  const sortedAvailableDestCodes = useMemo(() => {
+    return [...availableDestCodes].sort((a, b) =>
+      getDestCodeName(a).localeCompare(getDestCodeName(b)),
     );
+  }, [availableDestCodes]);
+
+  // Toggles a single code in the pending selection list
+  const handleDestCodeToggle = (code: string) => {
+    setPendingDestCodes((current) =>
+      current.includes(code)
+        ? current.filter((c) => c !== code)
+        : [...current, code],
+    );
+  };
+
+  // Saves the pending selection to the main preference set
+  const handleSaveDestCodes = () => {
     onPreferenceSetChange({
       ...preferenceSet,
-      userDestCodes: selectedCodes,
+      userDestCodes: pendingDestCodes,
     });
+    // Optionally, you can add a toast notification here for user feedback
   };
 
   const summary = useMemo(
@@ -77,35 +96,68 @@ export function PreferenceManager({
     <div className="space-y-6">
       <h2 className="page-title">Gerenciador de Preferências</h2>
 
-      {/* DestCode Selection */}
+      {/* REFACTORED: DestCode Selection */}
       <div className="card-body">
-        <h3 className="section-title">
-          Códigos de destino do seu curso de graduação
-        </h3>
-        <p className="text-sm text-gray-500 mb-2">
-          Selecione todos os códigos de destino que se aplicam ao seu curso!
-          <br />
-          (Segure Ctrl ou Cmd para selecionar múltiplos).
-        </p>
-        <select
-          multiple
-          className="select select-bordered w-full h-32"
-          value={preferenceSet.userDestCodes}
-          onChange={handleDestCodeChange}
-        >
-          {availableDestCodes.map((code) => (
-            <option key={code} value={code}>
-              {code}
-            </option>
-          ))}
-        </select>
+        <h3 className="section-title">Códigos de Destino</h3>
+
+        {/* Display currently saved codes */}
+        <div>
+          <h4 className="font-semibold text-gray-700 mb-2">Códigos Salvos:</h4>
+          <div className="flex flex-wrap gap-2">
+            {preferenceSet.userDestCodes.length > 0 ? (
+              preferenceSet.userDestCodes.map((code) => (
+                <span key={code} className="badge badge-primary badge-lg">
+                  {getDestCodeName(code)}
+                </span>
+              ))
+            ) : (
+              <p className="text-sm text-gray-500 italic">
+                Nenhum código de destino salvo.
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div className="divider"></div>
+
+        {/* Improved UX for selecting codes */}
+        <div>
+          <h4 className="font-semibold text-gray-700 mb-2">
+            Selecione seus códigos:
+          </h4>
+          <div className="max-h-48 overflow-y-auto border rounded-lg p-3 space-y-2 bg-base-200">
+            {sortedAvailableDestCodes.map((code) => (
+              <label
+                key={code}
+                className="flex items-center gap-3 cursor-pointer"
+              >
+                <input
+                  type="checkbox"
+                  className="checkbox checkbox-sm"
+                  checked={pendingDestCodes.includes(code)}
+                  onChange={() => {
+                    handleDestCodeToggle(code);
+                  }}
+                />
+                <span className="label-text">{getDestCodeName(code)}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        {/* Save button */}
+        <div className="mt-4 flex justify-end">
+          <button onClick={handleSaveDestCodes} className="btn btn-primary">
+            Salvar Códigos
+          </button>
+        </div>
       </div>
 
       <div className="card-body">
         <h3 className="section-title">Adicionar Nova Restrição de Horário</h3>
         <AddPreferenceForm
           onAddConstraint={addConstraint}
-          availableCourses={availableCourses}
+          availableCourseCodes={availableCourseCodes}
           availableProfessors={availableProfessors}
         />
       </div>
@@ -132,8 +184,12 @@ export function PreferenceManager({
               <PreferenceCard
                 key={constraint.id}
                 constraint={constraint}
-                onRemove={() => removeConstraint(constraint.id)}
-                onUpdate={(updates) => updateConstraint(constraint.id, updates)}
+                onRemove={() => {
+                  removeConstraint(constraint.id);
+                }}
+                onUpdate={(updates) => {
+                  updateConstraint(constraint.id, updates);
+                }}
               />
             ))}
           </div>

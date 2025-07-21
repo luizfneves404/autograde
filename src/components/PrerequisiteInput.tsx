@@ -63,9 +63,6 @@ export function PrerequisiteInput({
     setShowSuggestions(false);
   };
 
-  const inputClass =
-    'px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-full';
-
   return (
     <div className="relative">
       <label className="block text-sm font-medium text-neutral-700 mb-1">
@@ -74,11 +71,19 @@ export function PrerequisiteInput({
       <input
         type="text"
         value={inputValue}
-        onChange={(e) => handleInputChange(e.target.value)}
+        onChange={(e) => {
+          handleInputChange(e.target.value);
+        }}
         placeholder={placeholder}
-        onFocus={() => handleInputChange(inputValue)}
-        onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-        className={inputClass}
+        onFocus={() => {
+          handleInputChange(inputValue);
+        }}
+        onBlur={() =>
+          setTimeout(() => {
+            setShowSuggestions(false);
+          }, 200)
+        }
+        className="input"
       />
 
       {showSuggestions && suggestions.length > 0 && (
@@ -86,8 +91,10 @@ export function PrerequisiteInput({
           {suggestions.map((course) => (
             <div
               key={course.code}
-              onClick={() => addSuggestion(course)}
-              className="px-4 py-2 cursor-pointer hover:bg-neutral-100"
+              onClick={() => {
+                addSuggestion(course);
+              }}
+              className="btn btn-secondary"
             >
               <strong>{course.code}</strong> - {course.name}
             </div>

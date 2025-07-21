@@ -1,6 +1,4 @@
 import type { Course, Schedule, DayOfWeek } from '@/types';
-// No longer need createClassKey if we aren't creating a flat dictionary
-// import { createClassKey } from '@/utils/keys';
 
 /**
  * Parses a denormalized CSV string into a purely nested data structure of courses.
@@ -15,8 +13,9 @@ export const parseCSVData = (csvContent: string): Record<string, Course> => {
   const lines = csvContent.split('\n');
 
   let dataStartIndex = -1;
-  for (let i = 0; i < lines.length; i++) {
-    if (lines[i].includes('Disciplina,Nome da disciplina,Professor')) {
+  for (const [i, line] of lines.entries()) {
+    const trimmedLine = line.trim();
+    if (trimmedLine.includes('Disciplina,Nome da disciplina,Professor')) {
       dataStartIndex = i + 1;
       break;
     }
@@ -28,19 +27,18 @@ export const parseCSVData = (csvContent: string): Record<string, Course> => {
     );
   }
 
-  for (let i = dataStartIndex; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (!line) continue;
+  for (const [i, line] of lines.slice(dataStartIndex).entries()) {
+    const trimmedLine = line.trim();
+    if (!trimmedLine) continue;
 
     try {
-      const parts = line.split(',');
-      if (parts.length < 13) continue;
+      const parts = trimmedLine.split(',');
 
       const [
         courseCode,
         courseName,
         professorName,
-        numCreditos,
+        numCredits,
         classCode,
         destCode,
         vacancyCount,
@@ -51,20 +49,36 @@ export const parseCSVData = (csvContent: string): Record<string, Course> => {
         __,
         preReq,
       ] = parts.map((p) => p.trim());
+      if (
+        !courseCode ||
+        !courseName ||
+        !professorName ||
+        !numCredits ||
+        !classCode ||
+        !destCode ||
+        !vacancyCount ||
+        !horarioSala ||
+        !distanceHours ||
+        !SHFHours ||
+        !preReq
+      ) {
+        throw new Error('Invalid line');
+      }
 
       const cleanCourseCode = courseCode.replace(/[^A-Z0-9]/g, '');
       const cleanClassCode = classCode.trim();
 
-      if (!cleanCourseCode || !cleanClassCode) continue;
+      if (!cleanCourseCode || !cleanClassCode) {
+        throw new Error('Invalid line');
+      }
 
-      // 1. Get or Create the Course
       if (!courses[cleanCourseCode]) {
         courses[cleanCourseCode] = {
           code: cleanCourseCode,
           name: courseName.trim(),
-          numCredits: parseInt(numCreditos, 10) || 0,
+          numCredits: parseInt(numCredits, 10) || 0,
           shouldHavePreRequisites:
-            preReq?.toLowerCase().includes('sim') || false,
+            preReq.toLowerCase().includes('sim') || false,
           bidirCoRequisites: [],
           unidirCoRequisites: [],
           classes: [],
@@ -72,7 +86,6 @@ export const parseCSVData = (csvContent: string): Record<string, Course> => {
       }
       const course = courses[cleanCourseCode];
 
-      // 2. Get or Create the Class (CourseClass) within the Course
       let courseClass = course.classes.find(
         (c) => c.classCode === cleanClassCode,
       );
@@ -90,7 +103,6 @@ export const parseCSVData = (csvContent: string): Record<string, Course> => {
         course.classes.push(courseClass);
       }
 
-      // 3. Add the Class Offering to the Class
       courseClass.offerings.push({
         classCode: cleanClassCode,
         courseCode: cleanCourseCode,
@@ -108,49 +120,59 @@ export const parseCSVData = (csvContent: string): Record<string, Course> => {
   return courses;
 };
 
+const dayMap: Record<string, DayOfWeek> = {
+  SEG: 'segunda',
+  TER: 'terça',
+  QUA: 'quarta',
+  QUI: 'quinta',
+  SEX: 'sexta',
+  SAB: 'sábado',
+};
+
 /**
  * Parses a schedule string (e.g., "SEG 8-10 QUI 8-10") into a structured array.
  * This function remains unchanged.
  */
 export const parseScheduleFromCSV = (horarioSala: string): Schedule => {
-  const schedule: Schedule = [];
-  if (!horarioSala || horarioSala.trim() === '') return schedule;
-
-  const dayMap: Record<string, DayOfWeek> = {
-    SEG: 'segunda',
-    TER: 'terça',
-    QUA: 'quarta',
-    QUI: 'quinta',
-    SEX: 'sexta',
-    SAB: 'sábado',
-  };
-
-  const timeBlocks = horarioSala
-    .split(/\s{2,}/)
-    .filter((block) => block.trim());
-
-  for (const block of timeBlocks) {
-    try {
-      const match = block.trim().match(/^([A-Z]{3})\s+(\d{1,2})-(\d{1,2})/);
-      if (match) {
-        const [, dayStr, startStr, endStr] = match;
-        const day = dayMap[dayStr];
-        const startHour = parseInt(startStr, 10);
-        const endHour = parseInt(endStr, 10);
-
-        if (
-          day &&
-          !isNaN(startHour) &&
-          !isNaN(endHour) &&
-          startHour < endHour
-        ) {
-          schedule.push({ day, slot: { startHour, endHour } });
-        }
-      }
-    } catch (error) {
-      console.warn(`Error parsing schedule block "${block}":`, error);
-    }
+  if (!horarioSala.trim()) {
+    return [];
   }
 
-  return schedule;
+  const timeBlocks = horarioSala.split(/\s{2,}/).filter(Boolean);
+
+  return timeBlocks.reduce<Schedule>((schedule, block) => {
+    try {
+      const match = block.trim().match(/^([A-Z]{3})\s+(\d{1,2})-(\d{1,2})$/);
+
+      if (!match) {
+        return schedule;
+      }
+
+      const [, dayAbbr, startStr, endStr] = match;
+      if (!dayAbbr || !startStr || !endStr) {
+        throw new Error('Invalid schedule string');
+      }
+
+      const startHour = parseInt(startStr, 10);
+      const endHour = parseInt(endStr, 10);
+
+      if (
+        dayMap[dayAbbr] &&
+        !isNaN(startHour) &&
+        !isNaN(endHour) &&
+        startHour < endHour
+      ) {
+        const day = dayMap[dayAbbr];
+        schedule.push({ day, slot: { startHour, endHour } });
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        console.warn(`Error parsing block "${block}": ${error.message}`);
+      } else {
+        console.warn(`An unknown error occurred parsing block "${block}"`);
+      }
+    }
+
+    return schedule;
+  }, []);
 };

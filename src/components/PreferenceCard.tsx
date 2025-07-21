@@ -31,7 +31,9 @@ function PreferenceCard({
             <p className="text-sm text-gray-700">{constraint.description}</p>
           </div>
           <button
-            onClick={() => setAdvancedViewOpen((prev) => !prev)}
+            onClick={() => {
+              setAdvancedViewOpen((prev) => !prev);
+            }}
             className={`btn btn-sm ${isAdvancedViewOpen ? 'btn-info' : 'btn-neutral'}`}
             aria-label="Toggle advanced view"
             title="Toggle advanced view"
@@ -41,15 +43,14 @@ function PreferenceCard({
         </div>
         <div className="flex flex-col sm:flex-row items-end sm:items-center gap-3 flex-shrink-0">
           <button
-            onClick={() => onUpdate({ enabled: !constraint.enabled })}
+            onClick={() => {
+              onUpdate({ enabled: !constraint.enabled });
+            }}
             className={`btn btn-sm w-24 ${constraint.enabled ? 'btn-success' : 'btn-neutral'}`}
           >
             {constraint.enabled ? 'Ativo' : 'Inativo'}
           </button>
-          <button
-            onClick={onRemove}
-            className="btn btn-sm btn-error bg-red-100 text-red-600 hover:bg-red-200"
-          >
+          <button onClick={onRemove} className="btn btn-sm btn-error">
             Remover
           </button>
         </div>

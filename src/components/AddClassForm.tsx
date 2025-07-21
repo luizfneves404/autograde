@@ -47,75 +47,75 @@ export function AddClassForm({ onAddClass }: AddClassFormProps) {
     setNewClass({ schedule: [] });
   };
 
-  const inputClass =
-    'px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-full';
-
   return (
     <div className="p-4 my-4 border border-dashed border-neutral-300 rounded-lg">
       <h5 className="text-lg font-semibold mb-3 text-neutral-700">
-        Add New Class
+        Adicionar Nova Turma
       </h5>
       <div className="grid gap-4">
         {/* --- Core Class Info --- */}
         <div className="grid md:grid-cols-2 gap-4">
           <input
-            placeholder="Class Code (e.g., 3WA)"
+            placeholder="Código da Turma (e.g., 3WA)"
             value={newClass.classCode || ''}
-            onChange={(e) =>
-              setNewClass((prev) => ({ ...prev, classCode: e.target.value }))
-            }
-            className={inputClass}
+            onChange={(e) => {
+              setNewClass((prev) => ({ ...prev, classCode: e.target.value }));
+            }}
+            className="input"
           />
           <input
-            placeholder="Professor Name"
+            placeholder="Nome do Professor"
             value={newClass.professorName || ''}
-            onChange={(e) =>
+            onChange={(e) => {
               setNewClass((prev) => ({
                 ...prev,
                 professorName: e.target.value,
-              }))
-            }
-            className={inputClass}
+              }));
+            }}
+            className="input"
           />
         </div>
 
-        {/* --- Initial Offering Info --- */}
-        <div className="grid md:grid-cols-2 gap-4">
-          <input
-            placeholder="Destination Code (optional)"
-            value={newClass.destCode || ''}
-            onChange={(e) =>
-              setNewClass((prev) => ({ ...prev, destCode: e.target.value }))
-            }
-            className={inputClass}
-          />
-          <input
-            type="number"
-            min="0"
-            placeholder="Vacancy Count"
-            value={newClass.vacancyCount || ''}
-            onChange={(e) =>
-              setNewClass((prev) => ({
-                ...prev,
-                vacancyCount: parseInt(e.target.value, 10) || 0,
-              }))
-            }
-            className={inputClass}
-          />
-        </div>
-
-        {/* --- Schedule and Action --- */}
         <ScheduleEditor
           schedule={newClass.schedule || []}
-          onChange={(schedule) =>
-            setNewClass((prev) => ({ ...prev, schedule }))
-          }
+          onChange={(schedule) => {
+            setNewClass((prev) => ({ ...prev, schedule }));
+          }}
         />
-        <button
-          onClick={addClass}
-          className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 w-full"
-        >
-          Add Class
+
+        {/* --- Initial Offering Info --- */}
+        <div>
+          <h4 className="text-md font-semibold mb-3 text-neutral-700">
+            Oferta da Turma
+          </h4>
+
+          <div className="grid md:grid-cols-2 gap-4">
+            <input
+              placeholder="Código de destino"
+              value={newClass.destCode || ''}
+              onChange={(e) => {
+                setNewClass((prev) => ({ ...prev, destCode: e.target.value }));
+              }}
+              className="input"
+            />
+            <input
+              type="number"
+              min="0"
+              placeholder="Quantidade de Vagas"
+              value={newClass.vacancyCount || ''}
+              onChange={(e) => {
+                setNewClass((prev) => ({
+                  ...prev,
+                  vacancyCount: parseInt(e.target.value, 10) || 0,
+                }));
+              }}
+              className="input"
+            />
+          </div>
+        </div>
+
+        <button onClick={addClass} className="btn btn-primary w-full">
+          Adicionar Turma
         </button>
       </div>
     </div>

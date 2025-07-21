@@ -40,6 +40,13 @@ export type CourseClass = {
   offerings: ClassOffering[];
 };
 
+export type CourseClassWithCourseInfo = CourseClass & {
+  numCredits: number;
+  shouldHavePreRequisites: boolean;
+  bidirCoRequisites: string[];
+  unidirCoRequisites: string[];
+};
+
 export type ClassOffering = {
   classCode: string;
   courseCode: string;
@@ -56,8 +63,6 @@ export type ClassOfferingIdentifier = Pick<
 
 export type Grade = {
   classes: CourseClass[];
-  score: number;
-  preferences: string[]; // placeholder for preferences met by this grade
 };
 
 export type AppData = {
@@ -74,7 +79,7 @@ export type ExprNode =
   // ─── Class‐level Predicate ───────────────────────────
   | {
       op: '==' | '!=' | '>' | '<' | '>=' | '<=';
-      property: string;
+      property: keyof CourseClassWithCourseInfo;
       value: string | number;
     }
 
@@ -86,26 +91,32 @@ export type ExprNode =
 
   // ─── Aggregation ────────────────────────────────────
   | {
-      op: 'sum' | 'count'; // sum of a property, or count of classes
-      property?: string; // required if op==='sum'
+      op: 'sum'; // sum of a property, or count of classes
+      property: keyof CourseClassWithCourseInfo;
       operator: '==' | '!=' | '>' | '<' | '>=' | '<=';
       value: number;
       predicate?: ExprNode; // optional filter on which classes to include
+    }
+  | {
+      op: 'count';
+      predicate: ExprNode; // evaluated per-class
+      operator: '==' | '!=' | '>' | '<' | '>=' | '<=';
+      value: number;
     }
 
   // ─── Pairwise Relation ──────────────────────────────
   | {
       op: 'pairwise';
       relation: '!=' | 'overlaps';
-      property1: string; // e.g. 'time' or 'professorName'
-      property2?: string; // defaults to property1
+      property1: keyof CourseClassWithCourseInfo; // e.g. 'time' or 'professorName'
+      property2?: keyof CourseClassWithCourseInfo; // defaults to property1
       predicate?: ExprNode; // optional filter on which classes to compare
     }
 
   // ─── Custom Node ────────────────────────────────────
   | {
       op: 'custom';
-      id: string;
+      id: 'no_gaps_by_day';
       params?: Record<string, unknown>;
     };
 

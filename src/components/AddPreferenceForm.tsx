@@ -8,6 +8,7 @@ import {
   propertyValueIn,
   maxCreditLoad,
   noGapsByDay,
+  minCreditLoad,
 } from '@/utils/gradeOptimizer';
 import SearchAndAdd from '@components/SearchAndAdd';
 
@@ -18,7 +19,7 @@ const generateId = (): string =>
 
 interface AddPreferenceFormProps {
   onAddConstraint: (constraint: UIConstraint) => void;
-  availableCourses: string[];
+  availableCourseCodes: string[];
   availableProfessors: string[];
 }
 
@@ -109,6 +110,17 @@ const constraintTemplates = {
       expression: maxCreditLoad(Number(params.max)),
     }),
   },
+  MIN_CREDIT_LOAD: {
+    label: '🔍 Carga Mínima de Créditos',
+    params: [
+      { name: 'min', type: 'number', label: 'Número mínimo de créditos' },
+    ],
+    build: (params: { min: string }) => ({
+      name: 'Créditos Mínimos',
+      description: `A soma dos créditos deve ser pelo menos ${params.min}.`,
+      expression: minCreditLoad(Number(params.min)),
+    }),
+  },
   NO_GAPS_BY_DAY: {
     label: '🏃 Sem Janelas na Grade',
     params: [],
@@ -122,7 +134,7 @@ const constraintTemplates = {
 
 function AddPreferenceForm({
   onAddConstraint,
-  availableCourses,
+  availableCourseCodes,
   availableProfessors,
 }: AddPreferenceFormProps) {
   const [constraintType, setConstraintType] = useState<
@@ -224,11 +236,11 @@ function AddPreferenceForm({
                   <SearchAndAdd
                     label={param.label}
                     placeholder="Buscar disciplina pelo código ou nome..."
-                    allItems={availableCourses}
+                    allItems={availableCourseCodes}
                     selectedItems={params[param.name] || []}
-                    onSelectionChange={(selection) =>
-                      handleArrayParamChange(param.name, selection)
-                    }
+                    onSelectionChange={(selection) => {
+                      handleArrayParamChange(param.name, selection);
+                    }}
                   />
                 )}
                 {param.type === 'multi-select-professor' && (
@@ -237,9 +249,9 @@ function AddPreferenceForm({
                     placeholder="Buscar professor pelo nome..."
                     allItems={availableProfessors}
                     selectedItems={params[param.name] || []}
-                    onSelectionChange={(selection) =>
-                      handleArrayParamChange(param.name, selection)
-                    }
+                    onSelectionChange={(selection) => {
+                      handleArrayParamChange(param.name, selection);
+                    }}
                   />
                 )}
               </div>

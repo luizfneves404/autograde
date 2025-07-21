@@ -79,9 +79,11 @@ const Pagination: React.FC<PaginationProps> = ({
     >
       {/* --- Previous Button --- */}
       <button
-        onClick={() => onPageChange(currentPage - 1)}
+        onClick={() => {
+          onPageChange(currentPage - 1);
+        }}
         disabled={currentPage === 1}
-        className="px-3 py-2 rounded-md text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 bg-white text-neutral-700 border border-neutral-300 hover:bg-neutral-100 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="btn btn-secondary"
       >
         Anterior
       </button>
@@ -91,12 +93,12 @@ const Pagination: React.FC<PaginationProps> = ({
         typeof page === 'number' ? (
           <button
             key={`page-${page}`}
-            onClick={() => onPageChange(page)}
+            onClick={() => {
+              onPageChange(page);
+            }}
             disabled={currentPage === page}
-            className={`w-10 h-10 rounded-md text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
-              currentPage === page
-                ? 'bg-primary-600 text-white shadow-sm'
-                : 'bg-white text-neutral-700 border border-neutral-300 hover:bg-neutral-100'
+            className={`btn ${
+              currentPage === page ? 'btn-primary' : 'btn-secondary'
             }`}
           >
             {page}
@@ -113,9 +115,11 @@ const Pagination: React.FC<PaginationProps> = ({
 
       {/* --- Next Button --- */}
       <button
-        onClick={() => onPageChange(currentPage + 1)}
+        onClick={() => {
+          onPageChange(currentPage + 1);
+        }}
         disabled={currentPage === totalPages}
-        className="px-3 py-2 rounded-md text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 bg-white text-neutral-700 border border-neutral-300 hover:bg-neutral-100 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="btn btn-secondary"
       >
         Próximo
       </button>

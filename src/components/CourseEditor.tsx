@@ -22,13 +22,12 @@ export function CourseEditor({
       alert('Por favor, preencha ambos o código e o nome');
       return;
     }
+    if (isNaN(edited.numCredits) || edited.numCredits <= 0) {
+      alert('Por favor, insira um número de créditos válido.');
+      return;
+    }
     onSave(edited);
   };
-
-  const inputClass =
-    'px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-full';
-  const buttonClass =
-    'px-4 py-2 bg-neutral-200 text-neutral-800 rounded-md hover:bg-neutral-300 transition-colors';
 
   return (
     <div className="p-4 bg-neutral-50 rounded-lg border border-blue-200">
@@ -36,31 +35,73 @@ export function CourseEditor({
         Editando: {course.code}
       </h4>
       <div className="grid gap-4">
-        <div className="grid md:grid-cols-2 gap-4">
-          <input
-            value={edited.code}
-            onChange={(e) =>
-              setEdited((prev) => ({ ...prev, code: e.target.value }))
-            }
-            placeholder="Código da Disciplina"
-            className={inputClass}
-          />
-          <input
-            value={edited.name}
-            onChange={(e) =>
-              setEdited((prev) => ({ ...prev, name: e.target.value }))
-            }
-            placeholder="Nome da Disciplina"
-            className={inputClass}
-          />
+        <div className="grid md:grid-cols-3 gap-4">
+          {/* Código Input with Label */}
+          <div>
+            <label
+              htmlFor="course-code"
+              className="block mb-1 text-sm font-medium text-neutral-700"
+            >
+              Código
+            </label>
+            <input
+              id="course-code"
+              value={edited.code}
+              onChange={(e) => {
+                setEdited((prev) => ({ ...prev, code: e.target.value }));
+              }}
+              placeholder="Ex: MAB123"
+              className="input"
+            />
+          </div>
+
+          {/* Nome Input with Label */}
+          <div>
+            <label
+              htmlFor="course-name"
+              className="block mb-1 text-sm font-medium text-neutral-700"
+            >
+              Nome da Disciplina
+            </label>
+            <input
+              id="course-name"
+              value={edited.name}
+              onChange={(e) => {
+                setEdited((prev) => ({ ...prev, name: e.target.value }));
+              }}
+              placeholder="Ex: Cálculo I"
+              className="input"
+            />
+          </div>
+
+          {/* Créditos Input with Label */}
+          <div>
+            <label
+              htmlFor="course-credits"
+              className="block mb-1 text-sm font-medium text-neutral-700"
+            >
+              Créditos
+            </label>
+            <input
+              id="course-credits"
+              type="number"
+              value={edited.numCredits}
+              onChange={(e) => {
+                const credits = parseInt(e.target.value, 10) || 0;
+                setEdited((prev) => ({ ...prev, numCredits: credits }));
+              }}
+              className="input"
+              min="0"
+            />
+          </div>
         </div>
 
         <PrerequisiteInput
           courses={courses}
           selected={edited.unidirCoRequisites}
-          onChange={(unidirCoRequisites) =>
-            setEdited((prev) => ({ ...prev, unidirCoRequisites }))
-          }
+          onChange={(unidirCoRequisites) => {
+            setEdited((prev) => ({ ...prev, unidirCoRequisites }));
+          }}
           label="Co-requisitos Unidirecionais"
           placeholder="Códigos de disciplinas que devem ser puxadas antes ou junto com essa"
         />
@@ -68,21 +109,18 @@ export function CourseEditor({
         <PrerequisiteInput
           courses={courses}
           selected={edited.bidirCoRequisites}
-          onChange={(bidirCoRequisites) =>
-            setEdited((prev) => ({ ...prev, bidirCoRequisites }))
-          }
+          onChange={(bidirCoRequisites) => {
+            setEdited((prev) => ({ ...prev, bidirCoRequisites }));
+          }}
           label="Co-requisitos Bidirecionais"
           placeholder="Códigos de disciplinas que devem ser puxadas junto com essa"
         />
 
         <div className="flex justify-end gap-4 mt-4">
-          <button onClick={onCancel} className={buttonClass}>
+          <button onClick={onCancel} className="btn btn-secondary">
             Cancelar
           </button>
-          <button
-            onClick={handleSave}
-            className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors"
-          >
+          <button onClick={handleSave} className="btn btn-primary">
             Salvar Alterações
           </button>
         </div>

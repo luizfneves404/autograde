@@ -2,14 +2,12 @@ import React from 'react';
 import type { Grade, Course } from '@/types';
 import { GradeViewer } from '@components/GradeViewer';
 import { GradeControls } from '@components/GradeControls';
-import { GradeSelector } from '@components/GradeSelector';
-import { GradePreferences } from '@components/GradePreferences';
 import { useGradeNavigation } from '@/hooks/useGradeNavigation';
 
 interface GradeManagerProps {
   grades: Grade[];
   activeGrade: Grade | null;
-  setActiveGrade: (grade: Grade) => void;
+  setActiveGrade: (grade: Grade | null) => void;
   allCourses: Record<string, Course>;
 }
 
@@ -19,11 +17,12 @@ export const GradeManager: React.FC<GradeManagerProps> = ({
   setActiveGrade,
   allCourses: allCourses,
 }) => {
-  const { currentGradeIndex, goToPrevious, goToNext, setGradeIndex } =
-    useGradeNavigation({
-      totalGrades: grades.length,
-      onGradeChange: (index: number) => setActiveGrade(grades[index]),
-    });
+  const { currentGradeIndex, goToPrevious, goToNext } = useGradeNavigation({
+    totalGrades: grades.length,
+    onGradeChange: (index: number) => {
+      setActiveGrade(grades[index] || null);
+    },
+  });
 
   if (grades.length === 0) {
     return (
@@ -32,7 +31,7 @@ export const GradeManager: React.FC<GradeManagerProps> = ({
         <p className="text-neutral-600">
           Nenhuma grade disponível. As grades serão geradas automaticamente
           baseadas na lógica de otimização assim que você definir suas
-          preferências e clicar em "Gerar Grades".
+          preferências e clicar em &quot;Gerar Grades&quot;.
         </p>
       </div>
     );
@@ -50,14 +49,6 @@ export const GradeManager: React.FC<GradeManagerProps> = ({
         />
       </div>
 
-      {/* <div className="mb-6">
-        <GradeSelector
-          grades={grades}
-          currentGradeIndex={currentGradeIndex}
-          onSelectGrade={setGradeIndex}
-        />
-      </div> */}
-
       <div className="mt-6 border-t border-neutral-200 pt-6">
         {activeGrade ? (
           <GradeViewer grade={activeGrade} allCourses={allCourses} />
@@ -66,10 +57,6 @@ export const GradeManager: React.FC<GradeManagerProps> = ({
             Selecione uma grade para ver os detalhes.
           </p>
         )}
-      </div>
-
-      <div className="mt-6 border-t border-neutral-200 pt-6">
-        {activeGrade && <GradePreferences currentGrade={activeGrade} />}
       </div>
     </div>
   );

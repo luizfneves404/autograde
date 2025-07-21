@@ -1,13 +1,12 @@
 import { useState, useMemo } from 'react';
-import type { Course, CourseClass } from '@/types';
+import type {
+  ClassIdentifier,
+  ClassOffering,
+  Course,
+  CourseClass,
+  ClassOfferingIdentifier,
+} from '@/types';
 import { ITEMS_PER_PAGE } from '@/constants';
-// Local helper as createClassKey might be removed from utils
-const createClassKey = (courseClass: {
-  courseCode: string;
-  classCode: string;
-}) => `${courseClass.courseCode}-${courseClass.classCode}`;
-
-// --- Child Component Imports ---
 import { PrerequisiteInput } from '@components/PrerequisiteInput';
 import { CourseView } from '@/components/CourseView';
 import { CourseEditor } from '@/components/CourseEditor';
@@ -27,7 +26,9 @@ export function CourseManager({
   importCSV,
 }: CourseManagerProps) {
   const [editingCourse, setEditingCourse] = useState<string | null>(null);
-  const [editingClass, setEditingClass] = useState<string | null>(null); // Now stores a composite key: "COURSECODE-CLASSCODE"
+  const [editingClass, setEditingClass] = useState<ClassIdentifier | null>(
+    null,
+  );
   const [newCourse, setNewCourse] = useState<Partial<Course>>({});
   const [expandedCourses, setExpandedCourses] = useState<Set<string>>(
     new Set(),
@@ -96,7 +97,7 @@ export function CourseManager({
   const deleteCourse = (code: string) => {
     if (
       !window.confirm(
-        `Are you sure you want to delete ${code}? This will also delete all of its classes.`,
+        `Tem certeza que deseja deletar ${code}? Isso também deletará todas as turmas associadas.`,
       )
     ) {
       return;
@@ -131,23 +132,25 @@ export function CourseManager({
     onCoursesChange({ ...courses, [courseCode]: updatedCourse });
   };
 
-  const updateClass = (classKey: string, updatedData: CourseClass) => {
-    const { courseCode } = updatedData;
+  const updateClass = (
+    { courseCode, classCode }: ClassIdentifier,
+    updatedData: CourseClass,
+  ) => {
     const targetCourse = courses[courseCode];
     if (!targetCourse) return;
 
     const updatedCourse = {
       ...targetCourse,
       classes: targetCourse.classes.map((c) =>
-        c.classCode === updatedData.classCode ? updatedData : c,
+        c.classCode === classCode ? updatedData : c,
       ),
     };
     onCoursesChange({ ...courses, [courseCode]: updatedCourse });
     setEditingClass(null);
   };
 
-  const deleteClass = (classKey: string) => {
-    const [courseCode, classCode] = classKey.split('-');
+  const deleteClass = (classId: ClassIdentifier) => {
+    const { courseCode, classCode } = classId;
     const targetCourse = courses[courseCode];
     if (!targetCourse) return;
 
@@ -162,6 +165,91 @@ export function CourseManager({
       };
       onCoursesChange({ ...courses, [courseCode]: updatedCourse });
     }
+  };
+
+  const addOffering = (
+    { courseCode, classCode }: ClassIdentifier,
+    newOfferingData: Omit<ClassOffering, 'courseCode' | 'classCode'>,
+  ) => {
+    const targetCourse = courses[courseCode];
+    if (!targetCourse) return;
+
+    const updatedCourse = {
+      ...targetCourse,
+      classes: targetCourse.classes.map((c) => {
+        if (c.classCode === classCode) {
+          // Ensure offering with the same destCode doesn't exist
+          if (
+            c.offerings.some((o) => o.destCode === newOfferingData.destCode)
+          ) {
+            alert(
+              `Offering for destination ${newOfferingData.destCode} already exists.`,
+            );
+            return c; // Return original class
+          }
+          const newOffering: ClassOffering = {
+            ...newOfferingData,
+            courseCode,
+            classCode,
+          };
+          return { ...c, offerings: [...c.offerings, newOffering] };
+        }
+        return c;
+      }),
+    };
+    onCoursesChange({ ...courses, [courseCode]: updatedCourse });
+  };
+
+  const updateOffering = (
+    { courseCode, classCode, destCode }: ClassOfferingIdentifier,
+    updatedData: Partial<Pick<ClassOffering, 'vacancyCount'>>,
+  ) => {
+    const targetCourse = courses[courseCode];
+    if (!targetCourse) return;
+
+    const updatedCourse = {
+      ...targetCourse,
+      classes: targetCourse.classes.map((c) => {
+        if (c.classCode === classCode) {
+          return {
+            ...c,
+            offerings: c.offerings.map((o) =>
+              o.destCode === destCode ? { ...o, ...updatedData } : o,
+            ),
+          };
+        }
+        return c;
+      }),
+    };
+    onCoursesChange({ ...courses, [courseCode]: updatedCourse });
+  };
+
+  const deleteOffering = ({
+    courseCode,
+    classCode,
+    destCode,
+  }: ClassOfferingIdentifier) => {
+    const targetCourse = courses[courseCode];
+    if (!targetCourse) return;
+
+    if (
+      !window.confirm(`Delete offering for ${destCode} in class ${classCode}?`)
+    )
+      return;
+
+    const updatedCourse = {
+      ...targetCourse,
+      classes: targetCourse.classes.map((c) => {
+        if (c.classCode === classCode) {
+          return {
+            ...c,
+            offerings: c.offerings.filter((o) => o.destCode !== destCode),
+          };
+        }
+        return c;
+      }),
+    };
+    onCoursesChange({ ...courses, [courseCode]: updatedCourse });
   };
 
   return (
@@ -200,35 +288,35 @@ export function CourseManager({
             <input
               placeholder="Código da Disciplina (e.g., INF1007)"
               value={newCourse.code || ''}
-              onChange={(e) =>
-                setNewCourse((prev) => ({ ...prev, code: e.target.value }))
-              }
+              onChange={(e) => {
+                setNewCourse((prev) => ({ ...prev, code: e.target.value }));
+              }}
               className="input"
             />
             <input
               placeholder="Nome da Disciplina (e.g., Programação I)"
               value={newCourse.name || ''}
-              onChange={(e) =>
-                setNewCourse((prev) => ({ ...prev, name: e.target.value }))
-              }
+              onChange={(e) => {
+                setNewCourse((prev) => ({ ...prev, name: e.target.value }));
+              }}
               className="input"
             />
           </div>
           <PrerequisiteInput
             courses={courses}
             selected={newCourse.unidirCoRequisites || []}
-            onChange={(unidirCoRequisites) =>
-              setNewCourse((prev) => ({ ...prev, unidirCoRequisites }))
-            }
+            onChange={(unidirCoRequisites) => {
+              setNewCourse((prev) => ({ ...prev, unidirCoRequisites }));
+            }}
             label="Pré-requisitos Unidirecionais"
             placeholder="Disciplinas que devem ser cursadas antes ou com esta"
           />
           <PrerequisiteInput
             courses={courses}
             selected={newCourse.bidirCoRequisites || []}
-            onChange={(bidirCoRequisites) =>
-              setNewCourse((prev) => ({ ...prev, bidirCoRequisites }))
-            }
+            onChange={(bidirCoRequisites) => {
+              setNewCourse((prev) => ({ ...prev, bidirCoRequisites }));
+            }}
             label="Pré-requisitos Bidirecionais"
             placeholder="Disciplinas que devem ser cursadas com esta"
           />
@@ -247,7 +335,9 @@ export function CourseManager({
           <div key={course.code} className="card overflow-hidden">
             <div
               className="p-4 flex justify-between items-center cursor-pointer hover:bg-neutral-50 transition-colors"
-              onClick={() => toggleExpanded(course.code)}
+              onClick={() => {
+                toggleExpanded(course.code);
+              }}
             >
               <div>
                 <h3 className="font-bold text-lg text-neutral-800">
@@ -259,8 +349,12 @@ export function CourseManager({
                 </p>
               </div>
               <CourseActions
-                onEdit={() => setEditingCourse(course.code)}
-                onDelete={() => deleteCourse(course.code)}
+                onEdit={() => {
+                  setEditingCourse(course.code);
+                }}
+                onDelete={() => {
+                  deleteCourse(course.code);
+                }}
               />
             </div>
 
@@ -269,8 +363,12 @@ export function CourseManager({
                 {editingCourse === course.code ? (
                   <CourseEditor
                     course={course}
-                    onSave={(updated) => updateCourse(course.code, updated)}
-                    onCancel={() => setEditingCourse(null)}
+                    onSave={(updated) => {
+                      updateCourse(course.code, updated);
+                    }}
+                    onCancel={() => {
+                      setEditingCourse(null);
+                    }}
                     courses={courses}
                   />
                 ) : (
@@ -280,15 +378,16 @@ export function CourseManager({
                 <ClassSection
                   courseCode={course.code}
                   classes={course.classes} // Directly pass the nested classes
-                  editingClass={editingClass}
-                  onAddClass={(newClassData) =>
-                    addClass(course.code, newClassData)
-                  }
+                  editingClassId={editingClass}
+                  onAddClass={(newClassData) => {
+                    addClass(course.code, newClassData);
+                  }}
                   onUpdateClass={updateClass}
                   onDeleteClass={deleteClass}
                   onSetEditingClass={setEditingClass}
-                  // We can still use createClassKey to identify which class is being edited
-                  createClassKey={createClassKey}
+                  onAddOffering={addOffering}
+                  onUpdateOffering={updateOffering}
+                  onDeleteOffering={deleteOffering}
                 />
               </div>
             )}

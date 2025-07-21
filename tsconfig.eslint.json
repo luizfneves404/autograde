@@ -3,7 +3,9 @@
     "outDir": "./node_modules/.tmp",
     "noEmit": true,
     "allowJs": true,
-    "types": ["node"]
+    "types": ["node"],
+    "lib": ["ES2024"],
+    "target": "ES2024"
   },
   "include": [
     "eslint.config.js", // Explicitly include your ESLint config file

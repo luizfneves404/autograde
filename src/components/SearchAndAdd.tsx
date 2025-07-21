@@ -46,7 +46,9 @@ function SearchAndAdd({
             {item}
             <button
               type="button"
-              onClick={() => handleRemoveItem(item)}
+              onClick={() => {
+                handleRemoveItem(item);
+              }}
               className="btn btn-xs btn-circle btn-ghost"
             >
               ✕
@@ -61,7 +63,9 @@ function SearchAndAdd({
           type="text"
           placeholder={placeholder}
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => {
+            setQuery(e.target.value);
+          }}
           className="input w-full"
         />
         {query && (
@@ -71,7 +75,9 @@ function SearchAndAdd({
                 <li key={item}>
                   <button
                     type="button"
-                    onClick={() => handleAddItem(item)}
+                    onClick={() => {
+                      handleAddItem(item);
+                    }}
                     className="w-full text-left p-2 hover:bg-white"
                   >
                     {item}

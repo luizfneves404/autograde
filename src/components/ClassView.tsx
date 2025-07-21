@@ -22,23 +22,6 @@ export function ClassView({ courseClass }: ClassViewProps) {
         <p>
           <strong>Horário:</strong> {formatSchedule(courseClass.schedule)}
         </p>
-
-        {/* --- Offerings List --- */}
-        {/* Render the list of offerings for this class */}
-        {courseClass.offerings.length > 0 && (
-          <div>
-            <strong className="font-medium">Ofertas:</strong>
-            <ul className="pl-5 mt-1 list-disc list-inside">
-              {courseClass.offerings.map((offering, index) => (
-                // Use index in the key for safety, in case destCode is not unique
-                <li key={`${offering.destCode}-${index}`}>
-                  {offering.vacancyCount} vagas para{' '}
-                  {offering.destCode || 'Geral'}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
       </div>
     </div>
   );

@@ -1,24 +1,29 @@
+import globals from 'globals';
 import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
-import eslintConfigPrettier from 'eslint-config-prettier/flat';
-import pluginReactHooks from 'eslint-plugin-react-hooks';
-import pluginJsxA11y from 'eslint-plugin-jsx-a11y';
-import * as reactHooks from 'eslint-plugin-react-hooks';
-
-const reactPlugin = require('eslint-plugin-react');
-const globals = require('globals');
+import reactPlugin from 'eslint-plugin-react';
+import reactHooks from 'eslint-plugin-react-hooks';
+import eslintConfigPrettier from 'eslint-config-prettier';
 
 export default tseslint.config(
+  // Global ignores should come first
+  {
+    ignores: ['dist/', 'eslint.config.js'], // 'node_modules' is ignored by default
+  },
+
+  // Recommended baseline configurations
   eslint.configs.recommended,
-  tseslint.configs.strictTypeChecked,
+  ...tseslint.configs.strictTypeChecked, // Use spread operator for type-aware configs
   reactPlugin.configs.flat.recommended,
   reactPlugin.configs.flat['jsx-runtime'],
-  reactHooks.configs.recommended,
+  reactHooks.configs['recommended-latest'],
+
+  // Custom configuration for your project files
   {
-    // Base configuration for all files
     files: ['**/*.{js,mjs,cjs,ts,jsx,tsx}'],
     languageOptions: {
       parserOptions: {
+        ecmaVersion: 'latest',
         ecmaFeatures: { jsx: true },
         projectService: true,
         tsconfigRootDir: import.meta.dirname,
@@ -28,12 +33,17 @@ export default tseslint.config(
         ...globals.node,
       },
     },
-    plugins: {
-      reactPlugin,
-      pluginReactHooks,
-      pluginJsxA11y,
+  },
+
+  {
+    rules: {
+      '@typescript-eslint/no-unused-vars': [
+        'warn',
+        { varsIgnorePattern: '^_' },
+      ],
     },
   },
-  { ignores: ['node_modules', 'dist'] },
-  eslintConfigPrettier, // needs to be last?
+
+  // Prettier config must be last to override other styling rules
+  eslintConfigPrettier,
 );

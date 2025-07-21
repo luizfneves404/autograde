@@ -27,7 +27,7 @@ export const GradeViewer: React.FC<GradeViewerProps> = ({
   });
 
   const renderCell = (day: DayOfWeek, hour: number) => {
-    const key = `${day}-${hour}`;
+    const key = `${day}-${hour.toString()}`;
     const courseClass = scheduleMap.get(key);
 
     if (!courseClass) {
@@ -51,10 +51,7 @@ export const GradeViewer: React.FC<GradeViewerProps> = ({
     <div className="card-body">
       <div className="mb-4">
         <h3 className="text-xl font-bold text-neutral-800">
-          Detalhes da Grade -{' '}
-          <span className="text-primary-600">
-            Pontuação: {grade.score.toFixed(2)}
-          </span>
+          Detalhes da Grade
         </h3>
         <p className="text-md text-neutral-600">
           <strong>Número de créditos:</strong> {totalCreditos}
@@ -77,7 +74,7 @@ export const GradeViewer: React.FC<GradeViewerProps> = ({
             {hourSlots.map((hour) => (
               <tr key={hour}>
                 <td className="table-cell-header text-center align-middle">
-                  {`${hour}:00 - ${hour + 1}:00`}
+                  {`${hour.toString()}:00 - ${(hour + 1).toString()}:00`}
                 </td>
                 {DAYS.map((day) => renderCell(day, hour))}
               </tr>
