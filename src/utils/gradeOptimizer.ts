@@ -154,8 +154,7 @@ export function enrichClass(
 		...courseClass,
 		numCredits: course.numCredits,
 		shouldHavePreRequisites: course.shouldHavePreRequisites,
-		bidirCoRequisites: course.bidirCoRequisites,
-		unidirCoRequisites: course.unidirCoRequisites,
+		coRequisites: course.coRequisites,
 	};
 }
 
@@ -783,7 +782,8 @@ function filterCoursesByConstraints(
 
 /**
  * Validates that all co-requisites are present in the selected set.
- * Checks both unidirectional and bidirectional co-requisites.
+ * Uses a directed graph model: if Course X is selected, every course
+ * listed in X.coRequisites must also be selected.
  */
 function validateCoRequisites(
 	selectedCourses: string[],
@@ -795,17 +795,9 @@ function validateCoRequisites(
 		const course = allCourses[code];
 		if (!course) continue;
 
-		if (course.unidirCoRequisites) {
-			for (const req of course.unidirCoRequisites) {
-				if (!selectedSet.has(req)) {
-					return false;
-				}
-			}
-		}
-
-		if (course.bidirCoRequisites) {
-			for (const req of course.bidirCoRequisites) {
-				if (!selectedSet.has(req)) {
+		if (course.coRequisites) {
+			for (const reqCode of course.coRequisites) {
+				if (!selectedSet.has(reqCode)) {
 					return false;
 				}
 			}
