@@ -1,86 +1,116 @@
-import React from 'react';
-import type { Grade, DayOfWeek, Course } from '@/types';
-import { DAYS } from '@/constants';
-import { useGradeSchedule } from '@/hooks/useGradeSchedule';
+import { Box, Heading, Table, Text } from "@chakra-ui/react";
+import type React from "react";
+import { DAYS } from "@/constants";
+import { useGradeSchedule } from "@/hooks/useGradeSchedule";
+import type { Course, DayOfWeek, Grade } from "@/types";
 
 interface GradeViewerProps {
-  grade: Grade;
-  allCourses: Record<string, Course>;
+	grade: Grade;
+	allCourses: Record<string, Course>;
 }
 
 const DAY_NAMES: Record<DayOfWeek, string> = {
-  segunda: 'Segunda',
-  terça: 'Terça',
-  quarta: 'Quarta',
-  quinta: 'Quinta',
-  sexta: 'Sexta',
-  sábado: 'Sábado',
+	segunda: "Segunda",
+	terça: "Terça",
+	quarta: "Quarta",
+	quinta: "Quinta",
+	sexta: "Sexta",
+	sábado: "Sábado",
 };
 
 export const GradeViewer: React.FC<GradeViewerProps> = ({
-  grade,
-  allCourses,
+	grade,
+	allCourses,
 }) => {
-  const { scheduleMap, hourSlots, totalCreditos } = useGradeSchedule({
-    grade,
-    allCourses,
-  });
+	const { scheduleMap, hourSlots, totalCreditos } = useGradeSchedule({
+		grade,
+		allCourses,
+	});
 
-  const renderCell = (day: DayOfWeek, hour: number) => {
-    const key = `${day}-${hour.toString()}`;
-    const courseClass = scheduleMap.get(key);
+	const renderCell = (day: DayOfWeek, hour: number) => {
+		const key = `${day}-${hour.toString()}`;
+		const courseClass = scheduleMap.get(key);
 
-    if (!courseClass) {
-      return <td key={key} className="p-1 bg-gray-50/50" />;
-    }
+		if (!courseClass) {
+			return <Table.Cell key={key} bg="gray.50" />;
+		}
 
-    return (
-      <td key={key} className="p-1 text-center bg-white">
-        <div className="font-bold text-xs text-primary-700 leading-tight break-all">
-          {courseClass.courseCode}
-        </div>
-        <div className="text-xs text-neutral-600 leading-tight break-all">
-          {courseClass.classCode}
-        </div>
-      </td>
-    );
-  };
+		return (
+			<Table.Cell key={key} textAlign="center" bg="white">
+				<Box>
+					<Text
+						fontWeight="bold"
+						fontSize="xs"
+						color="blue.700"
+						lineHeight="tight"
+						wordBreak="break-all"
+					>
+						{courseClass.courseCode}
+					</Text>
+					<Text
+						fontSize="xs"
+						color="gray.600"
+						lineHeight="tight"
+						wordBreak="break-all"
+					>
+						{courseClass.classCode}
+					</Text>
+				</Box>
+			</Table.Cell>
+		);
+	};
 
-  return (
-    <div className="card-body">
-      <div className="mb-4">
-        <h3 className="text-xl font-bold text-neutral-800">
-          Detalhes da Grade
-        </h3>
-        <p className="text-md text-neutral-600">
-          <strong>Número de créditos:</strong> {totalCreditos}
-        </p>
-      </div>
+	return (
+		<Box
+			bg="white"
+			p={6}
+			borderRadius="lg"
+			shadow="sm"
+			border="1px solid"
+			borderColor="gray.200"
+		>
+			<Box mb={4}>
+				<Heading size="lg" color="gray.800">
+					Detalhes da Grade
+				</Heading>
+				<Text fontSize="md" color="gray.600">
+					<Text as="span" fontWeight="semibold">
+						Número de créditos:
+					</Text>{" "}
+					{totalCreditos}
+				</Text>
+			</Box>
 
-      <div className="overflow-x-auto">
-        <table className="table">
-          <thead>
-            <tr>
-              <th className="text-left">Hora</th>
-              {DAYS.map((day) => (
-                <th key={day} className="text-center">
-                  {DAY_NAMES[day]}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {hourSlots.map((hour) => (
-              <tr key={hour}>
-                <td className="p-2 font-semibold text-center text-gray-700 bg-gray-100">
-                  {`${hour.toString()}:00 - ${(hour + 1).toString()}:00`}
-                </td>
-                {DAYS.map((day) => renderCell(day, hour))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
+			<Box overflowX="auto">
+				<Table.Root size="sm" variant="outline">
+					<Table.Header>
+						<Table.Row>
+							<Table.ColumnHeader textAlign="left">Hora</Table.ColumnHeader>
+							{DAYS.map((day) => (
+								<Table.ColumnHeader key={day} textAlign="center">
+									{DAY_NAMES[day]}
+								</Table.ColumnHeader>
+							))}
+						</Table.Row>
+					</Table.Header>
+					<Table.Body>
+						{hourSlots.map((hour) => (
+							<Table.Row key={hour}>
+								<Table.Cell
+									p={2}
+									fontWeight="semibold"
+									textAlign="center"
+									color="gray.700"
+									bg="gray.100"
+								>
+									{`${hour.toString()}:00 - ${(hour + 1).toString()}:00`}
+								</Table.Cell>
+								{DAYS.map((day) => renderCell(day, hour))}
+							</Table.Row>
+						))}
+					</Table.Body>
+				</Table.Root>
+			</Box>
+		</Box>
+	);
 };

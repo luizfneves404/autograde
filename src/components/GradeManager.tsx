@@ -1,63 +1,89 @@
-import React from 'react';
-import type { Grade, Course } from '@/types';
-import { GradeViewer } from '@components/GradeViewer';
-import { GradeControls } from '@components/GradeControls';
-import { useGradeNavigation } from '@/hooks/useGradeNavigation';
+import { Box, Flex, Heading, Text } from "@chakra-ui/react";
+import { GradeControls } from "@components/GradeControls";
+import { GradeViewer } from "@components/GradeViewer";
+import type React from "react";
+import { useGradeNavigation } from "@/hooks/useGradeNavigation";
+import type { Course, Grade } from "@/types";
 
 interface GradeManagerProps {
-  grades: Grade[];
-  activeGrade: Grade | null;
-  setActiveGrade: (grade: Grade | null) => void;
-  allCourses: Record<string, Course>;
+	grades: Grade[];
+	activeGrade: Grade | null;
+	setActiveGrade: (grade: Grade | null) => void;
+	allCourses: Record<string, Course>;
 }
 
 export const GradeManager: React.FC<GradeManagerProps> = ({
-  grades,
-  activeGrade,
-  setActiveGrade,
-  allCourses: allCourses,
+	grades,
+	activeGrade,
+	setActiveGrade,
+	allCourses,
 }) => {
-  const { currentGradeIndex, goToPrevious, goToNext } = useGradeNavigation({
-    totalGrades: grades.length,
-    onGradeChange: (index: number) => {
-      setActiveGrade(grades[index] || null);
-    },
-  });
+	const { currentGradeIndex, goToPrevious, goToNext } = useGradeNavigation({
+		totalGrades: grades.length,
+		onGradeChange: (index: number) => {
+			setActiveGrade(grades[index] || null);
+		},
+	});
 
-  if (grades.length === 0) {
-    return (
-      <div className="card-body">
-        <h2 className="section-title mb-2">Grades Disponíveis</h2>
-        <p className="text-neutral-600">
-          Nenhuma grade disponível. As grades serão geradas automaticamente
-          baseadas na lógica de otimização assim que você definir suas
-          preferências e clicar em &quot;Gerar Grades&quot;.
-        </p>
-      </div>
-    );
-  }
+	if (grades.length === 0) {
+		return (
+			<Box
+				bg="white"
+				p={6}
+				borderRadius="lg"
+				shadow="sm"
+				border="1px solid"
+				borderColor="gray.200"
+			>
+				<Heading size="md" mb={2}>
+					Grades Disponíveis
+				</Heading>
+				<Text color="gray.600">
+					Nenhuma grade disponível. As grades serão geradas automaticamente
+					baseadas na lógica de otimização assim que você definir suas
+					preferências e clicar em &quot;Gerar Grades&quot;.
+				</Text>
+			</Box>
+		);
+	}
 
-  return (
-    <div className="bg-neutral-50 p-4 sm:p-6 rounded-lg border border-neutral-200 shadow-md">
-      <div className="page-header">
-        <h2 className="page-title mb-4 sm:mb-0">Grades Geradas</h2>
-        <GradeControls
-          currentGradeIndex={currentGradeIndex}
-          totalGrades={grades.length}
-          goToPrevious={goToPrevious}
-          goToNext={goToNext}
-        />
-      </div>
+	return (
+		<Box
+			bg="gray.50"
+			p={{ base: 4, sm: 6 }}
+			borderRadius="lg"
+			borderWidth="1px"
+			borderColor="gray.200"
+			shadow="md"
+		>
+			<Flex
+				direction={{ base: "column", sm: "row" }}
+				justify="space-between"
+				align={{ base: "stretch", sm: "center" }}
+				mb={6}
+				pb={4}
+				borderBottomWidth="1px"
+				borderColor="gray.200"
+				gap={4}
+			>
+				<Heading size="lg">Grades Geradas</Heading>
+				<GradeControls
+					currentGradeIndex={currentGradeIndex}
+					totalGrades={grades.length}
+					goToPrevious={goToPrevious}
+					goToNext={goToNext}
+				/>
+			</Flex>
 
-      <div className="mt-6 border-t border-neutral-200 pt-6">
-        {activeGrade ? (
-          <GradeViewer grade={activeGrade} allCourses={allCourses} />
-        ) : (
-          <p className="text-center text-neutral-500">
-            Selecione uma grade para ver os detalhes.
-          </p>
-        )}
-      </div>
-    </div>
-  );
+			<Box>
+				{activeGrade ? (
+					<GradeViewer grade={activeGrade} allCourses={allCourses} />
+				) : (
+					<Text textAlign="center" color="gray.500">
+						Selecione uma grade para ver os detalhes.
+					</Text>
+				)}
+			</Box>
+		</Box>
+	);
 };

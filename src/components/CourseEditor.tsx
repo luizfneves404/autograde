@@ -1,3 +1,13 @@
+import {
+	Box,
+	Button,
+	Field,
+	Flex,
+	Grid,
+	Heading,
+	Input,
+	VStack,
+} from "@chakra-ui/react";
 import { PrerequisiteInput } from "@components/PrerequisiteInput";
 import { useState } from "react";
 import type { Course } from "@/types";
@@ -30,71 +40,53 @@ export function CourseEditor({
 	};
 
 	return (
-		<div className="p-4 bg-neutral-50 rounded-lg border border-blue-200">
-			<h4 className="text-lg font-semibold mb-4 text-neutral-800">
+		<Box
+			p={4}
+			bg="gray.50"
+			borderRadius="lg"
+			borderWidth="1px"
+			borderColor="blue.200"
+		>
+			<Heading size="md" mb={4} color="gray.800">
 				Editando: {course.code}
-			</h4>
-			<div className="grid gap-4">
-				<div className="grid md:grid-cols-3 gap-4">
-					{/* Código Input with Label */}
-					<div>
-						<label
-							htmlFor="course-code"
-							className="block mb-1 text-sm font-medium text-neutral-700"
-						>
-							Código
-						</label>
-						<input
-							id="course-code"
+			</Heading>
+			<VStack gap={4} align="stretch">
+				<Grid templateColumns={{ base: "1fr", md: "repeat(3, 1fr)" }} gap={4}>
+					<Field.Root>
+						<Field.Label>Código</Field.Label>
+						<Input
 							value={edited.code}
 							onChange={(e) => {
 								setEdited((prev) => ({ ...prev, code: e.target.value }));
 							}}
 							placeholder="Ex: MAB123"
-							className="input"
 						/>
-					</div>
+					</Field.Root>
 
-					{/* Nome Input with Label */}
-					<div>
-						<label
-							htmlFor="course-name"
-							className="block mb-1 text-sm font-medium text-neutral-700"
-						>
-							Nome da Disciplina
-						</label>
-						<input
-							id="course-name"
+					<Field.Root>
+						<Field.Label>Nome da Disciplina</Field.Label>
+						<Input
 							value={edited.name}
 							onChange={(e) => {
 								setEdited((prev) => ({ ...prev, name: e.target.value }));
 							}}
 							placeholder="Ex: Cálculo I"
-							className="input"
 						/>
-					</div>
+					</Field.Root>
 
-					{/* Créditos Input with Label */}
-					<div>
-						<label
-							htmlFor="course-credits"
-							className="block mb-1 text-sm font-medium text-neutral-700"
-						>
-							Créditos
-						</label>
-						<input
-							id="course-credits"
+					<Field.Root>
+						<Field.Label>Créditos</Field.Label>
+						<Input
 							type="number"
 							value={edited.numCredits}
 							onChange={(e) => {
 								const credits = parseInt(e.target.value, 10) || 0;
 								setEdited((prev) => ({ ...prev, numCredits: credits }));
 							}}
-							className="input"
-							min="0"
+							min={0}
 						/>
-					</div>
-				</div>
+					</Field.Root>
+				</Grid>
 
 				<PrerequisiteInput
 					courses={courses}
@@ -106,15 +98,15 @@ export function CourseEditor({
 					placeholder="Códigos de disciplinas que devem ser puxadas com esta (se A requer B, adicione B à lista de A)"
 				/>
 
-				<div className="flex justify-end gap-4 mt-4">
-					<button onClick={onCancel} className="btn btn-secondary">
+				<Flex justify="flex-end" gap={4} mt={4}>
+					<Button onClick={onCancel} variant="outline">
 						Cancelar
-					</button>
-					<button onClick={handleSave} className="btn btn-primary">
+					</Button>
+					<Button onClick={handleSave} colorPalette="blue">
 						Salvar Alterações
-					</button>
-				</div>
-			</div>
-		</div>
+					</Button>
+				</Flex>
+			</VStack>
+		</Box>
 	);
 }

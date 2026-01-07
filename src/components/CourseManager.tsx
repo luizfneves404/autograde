@@ -1,3 +1,13 @@
+import {
+	Box,
+	Button,
+	Card,
+	Flex,
+	Heading,
+	Input,
+	Text,
+	VStack,
+} from "@chakra-ui/react";
 import Pagination from "@components/Pagination";
 import { PrerequisiteInput } from "@components/PrerequisiteInput";
 import { useMemo, useState } from "react";
@@ -63,8 +73,6 @@ export function CourseManager({
 		});
 	};
 
-	// --- CRUD Operations ---
-
 	const addCourse = () => {
 		const code = newCourse.code?.trim().toUpperCase();
 		if (!code || !newCourse.name?.trim()) {
@@ -82,7 +90,7 @@ export function CourseManager({
 			shouldHavePreRequisites: newCourse.shouldHavePreRequisites || false,
 			coRequisites: newCourse.coRequisites || [],
 			numCredits: newCourse.numCredits || 0,
-			classes: [], // Correctly initialized with an empty classes array
+			classes: [],
 		};
 		onCoursesChange({ ...courses, [code]: course });
 		setNewCourse({});
@@ -113,7 +121,6 @@ export function CourseManager({
 		const targetCourse = courses[courseCode];
 		if (!targetCourse) return;
 
-		// Ensure the new class code doesn't already exist for this course
 		if (
 			targetCourse.classes.some((c) => c.classCode === newClassData.classCode)
 		) {
@@ -177,14 +184,13 @@ export function CourseManager({
 			...targetCourse,
 			classes: targetCourse.classes.map((c) => {
 				if (c.classCode === classCode) {
-					// Ensure offering with the same destCode doesn't exist
 					if (
 						c.offerings.some((o) => o.destCode === newOfferingData.destCode)
 					) {
 						alert(
 							`Offering for destination ${newOfferingData.destCode} already exists.`,
 						);
-						return c; // Return original class
+						return c;
 					}
 					const newOffering: ClassOffering = {
 						...newOfferingData,
@@ -252,145 +258,165 @@ export function CourseManager({
 	};
 
 	return (
-		<div className="p-4 sm:p-6 bg-neutral-50 min-h-screen">
-			{/* --- Header and Actions --- */}
-			<div className="mb-6 flex flex-wrap items-center gap-4">
-				<h1 className="page-title mr-auto">Gerenciamento de Disciplinas</h1>
-				<div className="flex flex-wrap gap-2">
-					<label className="btn-info cursor-pointer">
+		<Box p={{ base: 4, sm: 6 }} bg="gray.50" minH="100vh">
+			<VStack gap={6} align="stretch">
+				{/* Header and Actions */}
+				<Flex wrap="wrap" align="center" gap={4}>
+					<Heading size="xl" flex={1}>
+						Gerenciamento de Disciplinas
+					</Heading>
+					<Button as="label" colorPalette="blue" cursor="pointer">
 						Import PUC-Rio CSV
-						<input
+						<Input
 							type="file"
 							accept=".csv"
 							onChange={importCSV}
-							className="hidden"
+							display="none"
 						/>
-					</label>
-				</div>
-				<input
-					type="text"
-					placeholder="Pesquisar disciplinas..."
-					value={searchQuery}
-					onChange={(e) => {
-						setSearchQuery(e.target.value);
-						setCurrentPage(1);
-					}}
-					className="input w-full md:w-72"
-				/>
-			</div>
-
-			{/* --- Add New Course Form --- */}
-			<div className="card-body mb-8">
-				<h3 className="section-title">Adicionar Nova Disciplina</h3>
-				<div className="grid gap-6">
-					<div className="grid md:grid-cols-2 gap-4">
-						<input
-							placeholder="Código da Disciplina (e.g., INF1007)"
-							value={newCourse.code || ""}
-							onChange={(e) => {
-								setNewCourse((prev) => ({ ...prev, code: e.target.value }));
-							}}
-							className="input"
-						/>
-						<input
-							placeholder="Nome da Disciplina (e.g., Programação I)"
-							value={newCourse.name || ""}
-							onChange={(e) => {
-								setNewCourse((prev) => ({ ...prev, name: e.target.value }));
-							}}
-							className="input"
-						/>
-					</div>
-					<PrerequisiteInput
-						courses={courses}
-						selected={newCourse.coRequisites || []}
-						onChange={(coRequisites) => {
-							setNewCourse((prev) => ({ ...prev, coRequisites }));
+					</Button>
+					<Input
+						type="text"
+						placeholder="Pesquisar disciplinas..."
+						value={searchQuery}
+						onChange={(e) => {
+							setSearchQuery(e.target.value);
+							setCurrentPage(1);
 						}}
-						label="Co-requisitos"
-						placeholder="Disciplinas que devem ser cursadas com esta (se A requer B, adicione B à lista de A)"
+						w={{ base: "full", md: "72" }}
 					/>
-					<button
-						onClick={addCourse}
-						className="btn-primary justify-self-start"
-					>
-						Adicionar Disciplina
-					</button>
-				</div>
-			</div>
+				</Flex>
 
-			{/* --- Courses List --- */}
-			<div className="space-y-4">
-				{paginatedCourses.map((course) => (
-					<div key={course.code} className="card overflow-hidden">
-						<div
-							className="p-4 flex justify-between items-center cursor-pointer hover:bg-neutral-50 transition-colors"
-							onClick={() => {
-								toggleExpanded(course.code);
-							}}
-						>
-							<div>
-								<h3 className="font-bold text-lg text-neutral-800">
-									{course.code} - {course.name}
-								</h3>
-								{/* Simplified and more efficient class count */}
-								<p className="text-sm text-neutral-600">
-									{course.classes.length} turmas
-								</p>
-							</div>
-							<CourseActions
-								onEdit={() => {
-									setEditingCourse(course.code);
+				{/* Add New Course Form */}
+				<Box
+					bg="white"
+					p={6}
+					borderRadius="lg"
+					shadow="sm"
+					border="1px solid"
+					borderColor="gray.200"
+				>
+					<Heading size="md" mb={4}>
+						Adicionar Nova Disciplina
+					</Heading>
+					<VStack gap={6} align="stretch">
+						<Flex direction={{ base: "column", md: "row" }} gap={4}>
+							<Input
+								placeholder="Código da Disciplina (e.g., INF1007)"
+								value={newCourse.code || ""}
+								onChange={(e) => {
+									setNewCourse((prev) => ({ ...prev, code: e.target.value }));
 								}}
-								onDelete={() => {
-									deleteCourse(course.code);
-								}}
+								flex={1}
 							/>
-						</div>
+							<Input
+								placeholder="Nome da Disciplina (e.g., Programação I)"
+								value={newCourse.name || ""}
+								onChange={(e) => {
+									setNewCourse((prev) => ({ ...prev, name: e.target.value }));
+								}}
+								flex={1}
+							/>
+						</Flex>
+						<PrerequisiteInput
+							courses={courses}
+							selected={newCourse.coRequisites || []}
+							onChange={(coRequisites) => {
+								setNewCourse((prev) => ({ ...prev, coRequisites }));
+							}}
+							label="Co-requisitos"
+							placeholder="Disciplinas que devem ser cursadas com esta (se A requer B, adicione B à lista de A)"
+						/>
+						<Button
+							onClick={addCourse}
+							colorPalette="blue"
+							alignSelf="flex-start"
+						>
+							Adicionar Disciplina
+						</Button>
+					</VStack>
+				</Box>
 
-						{expandedCourses.has(course.code) && (
-							<div className="card-footer">
-								{editingCourse === course.code ? (
-									<CourseEditor
-										course={course}
-										onSave={(updated) => {
-											updateCourse(course.code, updated);
+				{/* Courses List */}
+				<VStack gap={4} align="stretch">
+					{paginatedCourses.map((course) => (
+						<Card.Root key={course.code} overflow="hidden">
+							<Box
+								p={4}
+								cursor="pointer"
+								_hover={{ bg: "gray.50" }}
+								onClick={() => {
+									toggleExpanded(course.code);
+								}}
+							>
+								<Flex justify="space-between" align="center">
+									<Box>
+										<Heading size="md" color="gray.800">
+											{course.code} - {course.name}
+										</Heading>
+										<Text fontSize="sm" color="gray.600">
+											{course.classes.length} turmas
+										</Text>
+									</Box>
+									<CourseActions
+										onEdit={() => {
+											setEditingCourse(course.code);
 										}}
-										onCancel={() => {
-											setEditingCourse(null);
+										onDelete={() => {
+											deleteCourse(course.code);
 										}}
-										courses={courses}
 									/>
-								) : (
-									<CourseView course={course} allCourses={courses} />
-								)}
+								</Flex>
+							</Box>
 
-								<ClassSection
-									courseCode={course.code}
-									classes={course.classes} // Directly pass the nested classes
-									editingClassId={editingClass}
-									onAddClass={(newClassData) => {
-										addClass(course.code, newClassData);
-									}}
-									onUpdateClass={updateClass}
-									onDeleteClass={deleteClass}
-									onSetEditingClass={setEditingClass}
-									onAddOffering={addOffering}
-									onUpdateOffering={updateOffering}
-									onDeleteOffering={deleteOffering}
-								/>
-							</div>
-						)}
-					</div>
-				))}
-			</div>
+							{expandedCourses.has(course.code) && (
+								<Box
+									bg="gray.50"
+									p={6}
+									borderTopWidth="1px"
+									borderColor="gray.200"
+								>
+									{editingCourse === course.code ? (
+										<CourseEditor
+											course={course}
+											onSave={(updated) => {
+												updateCourse(course.code, updated);
+											}}
+											onCancel={() => {
+												setEditingCourse(null);
+											}}
+											courses={courses}
+										/>
+									) : (
+										<CourseView course={course} allCourses={courses} />
+									)}
 
-			{/* --- Pagination --- */}
-			<Pagination
-				currentPage={currentPage}
-				totalPages={totalPages}
-				onPageChange={setCurrentPage}
-			/>
-		</div>
+									<ClassSection
+										courseCode={course.code}
+										classes={course.classes}
+										editingClassId={editingClass}
+										onAddClass={(newClassData) => {
+											addClass(course.code, newClassData);
+										}}
+										onUpdateClass={updateClass}
+										onDeleteClass={deleteClass}
+										onSetEditingClass={setEditingClass}
+										onAddOffering={addOffering}
+										onUpdateOffering={updateOffering}
+										onDeleteOffering={deleteOffering}
+									/>
+								</Box>
+							)}
+						</Card.Root>
+					))}
+				</VStack>
+
+				{/* Pagination */}
+				<Pagination
+					currentPage={currentPage}
+					totalPages={totalPages}
+					onPageChange={setCurrentPage}
+				/>
+			</VStack>
+		</Box>
 	);
 }

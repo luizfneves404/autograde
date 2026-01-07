@@ -1,126 +1,149 @@
-import React, { useMemo, useState } from 'react';
-import type { Grade, Course, PreferenceSet, CourseClass } from '@/types';
-import SearchAndAdd from './SearchAndAdd';
-import { GradeViewer } from './GradeViewer';
+import { Box, Button, Flex, Heading, Text, VStack } from "@chakra-ui/react";
+import React, { useMemo, useState } from "react";
+import type { Course, CourseClass, Grade, PreferenceSet } from "@/types";
 import {
-  evaluateConstraint,
-  type EvaluationResult,
-  enrichClass,
-} from '@/utils/gradeOptimizer';
+	type EvaluationResult,
+	enrichClass,
+	evaluateConstraint,
+} from "@/utils/gradeOptimizer";
+import { GradeViewer } from "./GradeViewer";
+import SearchAndAdd from "./SearchAndAdd";
 
 interface ManualGradeCreatorProps {
-  allCourses: Record<string, Course>;
-  availableClasses: CourseClass[];
-  preferenceSet: PreferenceSet;
+	allCourses: Record<string, Course>;
+	availableClasses: CourseClass[];
+	preferenceSet: PreferenceSet;
 }
 
 export const ManualGradeCreator: React.FC<ManualGradeCreatorProps> = ({
-  allCourses,
-  availableClasses,
-  preferenceSet,
+	allCourses,
+	availableClasses,
+	preferenceSet,
 }) => {
-  const [selectedClasses, setSelectedClasses] = useState<CourseClass[]>([]);
+	const [selectedClasses, setSelectedClasses] = useState<CourseClass[]>([]);
 
-  const [evaluationResult, setEvaluationResult] =
-    useState<EvaluationResult | null>(null);
+	const [evaluationResult, setEvaluationResult] =
+		useState<EvaluationResult | null>(null);
 
-  const displayGrade: Grade = {
-    classes: selectedClasses,
-  };
+	const displayGrade: Grade = {
+		classes: selectedClasses,
+	};
 
-  const classMap = useMemo(() => {
-    return new Map<string, CourseClass>(
-      availableClasses.map((c) => {
-        return [`${c.courseCode}-${c.classCode}`, c];
-      }),
-    );
-  }, [availableClasses]);
+	const classMap = useMemo(() => {
+		return new Map<string, CourseClass>(
+			availableClasses.map((c) => {
+				return [`${c.courseCode}-${c.classCode}`, c];
+			}),
+		);
+	}, [availableClasses]);
 
-  const handleCheckPreferences = () => {
-    const evaluation = evaluateConstraint(
-      {
-        op: 'and',
-        children: preferenceSet.hardConstraints.map((c) => c.expression),
-      },
-      displayGrade.classes.map((c) => enrichClass(c, allCourses)),
-      'explain',
-    );
-    setEvaluationResult(evaluation);
-  };
+	const handleCheckPreferences = () => {
+		const evaluation = evaluateConstraint(
+			{
+				op: "and",
+				children: preferenceSet.hardConstraints.map((c) => c.expression),
+			},
+			displayGrade.classes.map((c) => enrichClass(c, allCourses)),
+			"explain",
+		);
+		setEvaluationResult(evaluation);
+	};
 
-  React.useEffect(() => {
-    setEvaluationResult(null);
-  }, [selectedClasses]);
+	React.useEffect(() => {
+		setEvaluationResult(null);
+	}, [selectedClasses]);
 
-  return (
-    <div className="flex flex-col lg:flex-row gap-6">
-      {/* Left Panel: Controls for building the grade */}
-      <div className="lg:w-1/3 card-body">
-        <h2 className="section-title mb-4">Montar Grade</h2>
-        <div className="space-y-6">
-          <SearchAndAdd
-            label="Adicionar Turmas"
-            placeholder="Buscar por código da disciplina e turma..."
-            allItems={availableClasses.map((c) => {
-              return `${c.courseCode}-${c.classCode}`;
-            })}
-            selectedItems={selectedClasses.map((c) => {
-              return `${c.courseCode}-${c.classCode}`;
-            })}
-            onSelectionChange={(newSelection: string[]) => {
-              const selected = newSelection.flatMap((id) => {
-                const foundClass = classMap.get(id);
-                return foundClass ? [foundClass] : [];
-              });
-              setSelectedClasses(selected);
-            }}
-          />
-          <button
-            onClick={handleCheckPreferences}
-            className="btn btn-primary w-full"
-            disabled={selectedClasses.length === 0}
-          >
-            Analisar Preferências
-          </button>
-        </div>
-      </div>
+	return (
+		<Flex direction={{ base: "column", lg: "row" }} gap={6}>
+			{/* Left Panel: Controls for building the grade */}
+			<Box
+				flex={{ base: "1", lg: "1 1 33%" }}
+				bg="white"
+				p={6}
+				borderRadius="lg"
+				shadow="sm"
+				border="1px solid"
+				borderColor="gray.200"
+			>
+				<Heading size="md" mb={4}>
+					Montar Grade
+				</Heading>
+				<VStack gap={6} align="stretch">
+					<SearchAndAdd
+						label="Adicionar Turmas"
+						placeholder="Buscar por código da disciplina e turma..."
+						allItems={availableClasses.map((c) => {
+							return `${c.courseCode}-${c.classCode}`;
+						})}
+						selectedItems={selectedClasses.map((c) => {
+							return `${c.courseCode}-${c.classCode}`;
+						})}
+						onSelectionChange={(newSelection: string[]) => {
+							const selected = newSelection.flatMap((id) => {
+								const foundClass = classMap.get(id);
+								return foundClass ? [foundClass] : [];
+							});
+							setSelectedClasses(selected);
+						}}
+					/>
+					<Button
+						onClick={handleCheckPreferences}
+						colorPalette="blue"
+						w="full"
+						disabled={selectedClasses.length === 0}
+					>
+						Analisar Preferências
+					</Button>
+				</VStack>
+			</Box>
 
-      {/* Right Panel: Display for the schedule and violations */}
-      <div className="lg:w-2/3 bg-neutral-50 p-4 sm:p-6 rounded-lg border border-neutral-200 shadow-md min-h-[30rem]">
-        <h2 className="page-title mb-4">Visualização da Grade</h2>
-        {selectedClasses.length > 0 ? (
-          <>
-            <div className="border-t border-neutral-200 pt-6">
-              <GradeViewer grade={displayGrade} allCourses={allCourses} />
-            </div>
-            {evaluationResult && (
-              <div className="mt-6 border-t border-neutral-200 pt-6">
-                <h3 className="text-lg font-semibold mb-3 text-neutral-800">
-                  Resultado da Análise de Preferências
-                </h3>
-                <p className="text-neutral-600">
-                  {evaluationResult.satisfied
-                    ? 'As preferências foram atendidas.'
-                    : 'As preferências não foram atendidas.'}
-                </p>
-                <ul className="list-disc list-inside space-y-1 text-neutral-700">
-                  {evaluationResult.reasons.map((r, index) => (
-                    <li key={index} className="text-sm">
-                      {r}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </>
-        ) : (
-          <div className="flex items-center justify-center h-full">
-            <p className="text-neutral-500 text-center py-10">
-              Adicione disciplinas para começar a montar sua grade.
-            </p>
-          </div>
-        )}
-      </div>
-    </div>
-  );
+			{/* Right Panel: Display for the schedule and violations */}
+			<Box
+				flex={{ base: "1", lg: "1 1 67%" }}
+				bg="gray.50"
+				p={{ base: 4, sm: 6 }}
+				borderRadius="lg"
+				borderWidth="1px"
+				borderColor="gray.200"
+				shadow="md"
+				minH="md"
+			>
+				<Heading size="lg" mb={4}>
+					Visualização da Grade
+				</Heading>
+				{selectedClasses.length > 0 ? (
+					<>
+						<Box borderTopWidth="1px" borderColor="gray.200" pt={6}>
+							<GradeViewer grade={displayGrade} allCourses={allCourses} />
+						</Box>
+						{evaluationResult && (
+							<Box mt={6} borderTopWidth="1px" borderColor="gray.200" pt={6}>
+								<Heading size="md" mb={3} color="gray.800">
+									Resultado da Análise de Preferências
+								</Heading>
+								<Text color="gray.600">
+									{evaluationResult.satisfied
+										? "As preferências foram atendidas."
+										: "As preferências não foram atendidas."}
+								</Text>
+								<Box as="ul" listStyleType="disc" pl={5} mt={2}>
+									{evaluationResult.reasons.map((r, index) => (
+										<Box as="li" key={index} fontSize="sm" color="gray.700">
+											{r}
+										</Box>
+									))}
+								</Box>
+							</Box>
+						)}
+					</>
+				) : (
+					<Flex align="center" justify="center" h="full">
+						<Text color="gray.500" textAlign="center" py={10}>
+							Adicione disciplinas para começar a montar sua grade.
+						</Text>
+					</Flex>
+				)}
+			</Box>
+		</Flex>
+	);
 };

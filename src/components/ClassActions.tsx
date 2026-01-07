@@ -1,22 +1,23 @@
-import React from 'react';
+import { Button, Flex } from "@chakra-ui/react";
+import type React from "react";
 
 interface ClassActionsProps {
-  onEdit: () => void;
-  onDelete: () => void;
+	onEdit: () => void;
+	onDelete: () => void;
 }
 
 export const ClassActions: React.FC<ClassActionsProps> = ({
-  onEdit,
-  onDelete,
+	onEdit,
+	onDelete,
 }) => {
-  return (
-    <div className="flex gap-2">
-      <button onClick={onEdit} className="btn-primary btn-sm">
-        Editar
-      </button>
-      <button onClick={onDelete} className="btn-error btn-sm">
-        Deletar
-      </button>
-    </div>
-  );
+	return (
+		<Flex gap={2}>
+			<Button onClick={onEdit} colorPalette="blue" size="sm">
+				Editar
+			</Button>
+			<Button onClick={onDelete} colorPalette="red" size="sm">
+				Deletar
+			</Button>
+		</Flex>
+	);
 };

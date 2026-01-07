@@ -1,3 +1,4 @@
+import { Box, Flex, Heading, Text, VStack } from "@chakra-ui/react";
 import type { Course } from "@/types";
 
 interface CourseViewProps {
@@ -26,10 +27,18 @@ export function CourseView({ course, allCourses }: CourseViewProps) {
 		allCourses[code]?.name || `${code} (not found)`;
 
 	const detailItem = (label: string, value: React.ReactNode) => (
-		<div className="flex flex-col sm:flex-row">
-			<strong className="w-full sm:w-1/3 text-neutral-600">{label}:</strong>
-			<span className="w-full sm:w-2/3 text-neutral-800">{value}</span>
-		</div>
+		<Flex direction={{ base: "column", sm: "row" }}>
+			<Text
+				fontWeight="semibold"
+				color="gray.600"
+				w={{ base: "full", sm: "33%" }}
+			>
+				{label}:
+			</Text>
+			<Text color="gray.800" w={{ base: "full", sm: "67%" }}>
+				{value}
+			</Text>
+		</Flex>
 	);
 
 	const coRequisitesWithTypes = course.coRequisites.map((code) => {
@@ -47,13 +56,17 @@ export function CourseView({ course, allCourses }: CourseViewProps) {
 	);
 
 	return (
-		<div className="flex-1">
-			<div className="mb-4">
-				<h3 className="text-xl font-bold text-neutral-900">{course.name}</h3>
-				<p className="text-md text-neutral-500">{course.code}</p>
-			</div>
+		<Box flex={1}>
+			<Box mb={4}>
+				<Heading size="lg" color="gray.900">
+					{course.name}
+				</Heading>
+				<Text fontSize="md" color="gray.500">
+					{course.code}
+				</Text>
+			</Box>
 
-			<div className="space-y-3 text-sm">
+			<VStack gap={3} align="stretch" fontSize="sm">
 				{detailItem("Créditos", course.numCredits)}
 				{detailItem(
 					"Requer pré-requisitos",
@@ -62,29 +75,33 @@ export function CourseView({ course, allCourses }: CourseViewProps) {
 				{detailItem(
 					"Co-requisitos",
 					course.coRequisites.length > 0 ? (
-						<div className="space-y-1">
+						<VStack gap={1} align="stretch">
 							{bidirectional.length > 0 && (
-								<div>
-									<span className="font-medium">Bidirecionais (↔):</span>{" "}
+								<Box>
+									<Text as="span" fontWeight="medium">
+										Bidirecionais (↔):
+									</Text>{" "}
 									{bidirectional
 										.map((item) => `${item.name} (${item.code})`)
 										.join(", ")}
-								</div>
+								</Box>
 							)}
 							{unidirectional.length > 0 && (
-								<div>
-									<span className="font-medium">Unidirecionais (→):</span>{" "}
+								<Box>
+									<Text as="span" fontWeight="medium">
+										Unidirecionais (→):
+									</Text>{" "}
 									{unidirectional
 										.map((item) => `${item.name} (${item.code})`)
 										.join(", ")}
-								</div>
+								</Box>
 							)}
-						</div>
+						</VStack>
 					) : (
 						"Nenhum"
 					),
 				)}
-			</div>
-		</div>
+			</VStack>
+		</Box>
 	);
 }

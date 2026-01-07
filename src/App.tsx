@@ -1,161 +1,165 @@
-import { useAppData } from '@/hooks/useAppData';
-import { GradeManager } from '@components/GradeManager';
-import { CourseManager } from '@components/CourseManager';
-import { PreferenceManager } from '@components/PreferenceManager';
-import { ManualGradeCreator } from '@components/ManualGradeCreator';
+import {
+	Box,
+	Button,
+	Container,
+	Flex,
+	Heading,
+	Input,
+	Text,
+	VStack,
+} from "@chakra-ui/react";
+import { CourseManager } from "@components/CourseManager";
+import { GradeManager } from "@components/GradeManager";
+import { ManualGradeCreator } from "@components/ManualGradeCreator";
+import { PreferenceManager } from "@components/PreferenceManager";
+import { useAppData } from "@/hooks/useAppData";
 
 function App() {
-  // Call the hook to get all state and logic
-  const {
-    view,
-    setView,
-    courses,
-    setCourses,
-    preferenceSet,
-    setPreferenceSet,
-    grades,
-    activeGrade,
-    setActiveGrade,
-    handleJsonImport,
-    handleCsvImport,
-    handleExport,
-    handleGenerateGrades,
-    availableCourseCodes,
-    availableClasses,
-    availableProfessors,
-    availableDestCodes,
-  } = useAppData();
+	const {
+		view,
+		setView,
+		courses,
+		setCourses,
+		preferenceSet,
+		setPreferenceSet,
+		grades,
+		activeGrade,
+		setActiveGrade,
+		handleJsonImport,
+		handleCsvImport,
+		handleExport,
+		handleGenerateGrades,
+		availableCourseCodes,
+		availableClasses,
+		availableProfessors,
+		availableDestCodes,
+	} = useAppData();
 
-  // The component is now just responsible for rendering the layout
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-brand-50 via-white to-brand-100 font-display antialiased">
-      <div className="min-h-screen supports-backdrop-filter:backdrop-blur-sm">
-        <header className="container mx-auto px-6 py-8">
-          <div className="text-center space-y-2">
-            <h1 className="text-5xl font-bold bg-gradient-to-r from-brand-600 via-brand-700 to-brand-800 bg-clip-text text-transparent tracking-tight">
-              AutoGrade
-            </h1>
-            <p className="text-xl text-gray-600 text-balance max-w-2xl mx-auto">
-              Seu assistente inteligente para otimização de grades horárias
-            </p>
-          </div>
-        </header>
+	return (
+		<Box minH="100vh" bg="gray.50">
+			<Container maxW="container.xl" py={8}>
+				<VStack gap={8} align="stretch">
+					{/* Header */}
+					<Box textAlign="center">
+						<Heading size="2xl" mb={2}>
+							AutoGrade
+						</Heading>
+						<Text fontSize="xl" color="gray.600">
+							Seu assistente inteligente para otimização de grades horárias
+						</Text>
+					</Box>
 
-        <nav className="container mx-auto px-6 mb-8">
-          <div className="nav glassmorphism">
-            {/* Tab Buttons */}
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => {
-                  setView('courses');
-                }}
-                className={`nav-item transition-all duration-200 any-hover:hover:scale-105 ${
-                  view === 'courses' ? 'nav-item-active' : ''
-                }`}
-              >
-                📚 Disciplinas
-              </button>
-              <button
-                onClick={() => {
-                  setView('grades');
-                }}
-                className={`nav-item transition-all duration-200 any-hover:hover:scale-105 ${
-                  view === 'grades' ? 'nav-item-active' : ''
-                }`}
-              >
-                ⚡ Grades & Preferências
-              </button>
-              <button
-                onClick={() => {
-                  setView('manual');
-                }}
-                className={`nav-item transition-all duration-200 any-hover:hover:scale-105 ${
-                  view === 'manual' ? 'nav-item-active' : ''
-                }`}
-              >
-                ✏️ Grade Manual
-              </button>
-            </div>
+					{/* Navigation */}
+					<Box
+						bg="white"
+						p={6}
+						borderRadius="lg"
+						shadow="sm"
+						border="1px solid"
+						borderColor="gray.200"
+					>
+						<Flex
+							direction={{ base: "column", md: "row" }}
+							gap={4}
+							justify="space-between"
+							align="center"
+						>
+							{/* Tab Buttons */}
+							<Flex gap={2} wrap="wrap">
+								<Button
+									onClick={() => setView("courses")}
+									variant={view === "courses" ? "solid" : "outline"}
+									colorPalette={view === "courses" ? "blue" : "gray"}
+								>
+									📚 Disciplinas
+								</Button>
+								<Button
+									onClick={() => setView("grades")}
+									variant={view === "grades" ? "solid" : "outline"}
+									colorPalette={view === "grades" ? "blue" : "gray"}
+								>
+									⚡ Grades & Preferências
+								</Button>
+								<Button
+									onClick={() => setView("manual")}
+									variant={view === "manual" ? "solid" : "outline"}
+									colorPalette={view === "manual" ? "blue" : "gray"}
+								>
+									✏️ Grade Manual
+								</Button>
+							</Flex>
 
-            {/* Action Buttons */}
-            <div className="flex flex-wrap items-center gap-3">
-              <label className="btn-secondary cursor-pointer transition-all duration-200 any-hover:hover:scale-105">
-                📁 Importar
-                <input
-                  type="file"
-                  className="sr-only"
-                  accept=".json"
-                  onChange={handleJsonImport}
-                />
-              </label>
+							{/* Action Buttons */}
+							<Flex gap={3} wrap="wrap">
+								<Button as="label" variant="outline" cursor="pointer">
+									📁 Importar
+									<Input
+										type="file"
+										display="none"
+										accept=".json"
+										onChange={handleJsonImport}
+									/>
+								</Button>
 
-              <button
-                onClick={handleExport}
-                className="btn-secondary transition-all duration-200 any-hover:hover:scale-105"
-              >
-                💾 Exportar
-              </button>
+								<Button onClick={handleExport} variant="outline">
+									💾 Exportar
+								</Button>
 
-              <button
-                onClick={handleGenerateGrades}
-                className="btn-primary font-semibold transition-all duration-200 any-hover:hover:scale-105 shadow-lg"
-              >
-                ⚡ Gerar Grades
-              </button>
-            </div>
-          </div>
-        </nav>
+								<Button
+									onClick={handleGenerateGrades}
+									colorPalette="blue"
+									fontWeight="semibold"
+								>
+									⚡ Gerar Grades
+								</Button>
+							</Flex>
+						</Flex>
+					</Box>
 
-        <main className="container mx-auto px-6 pb-12">
-          <div className="max-w-7xl mx-auto">
-            {view === 'courses' && (
-              <div className="animate-in fade-in-50 duration-300">
-                <CourseManager
-                  courses={courses}
-                  onCoursesChange={setCourses}
-                  importCSV={handleCsvImport}
-                />
-              </div>
-            )}
+					{/* Main Content */}
+					<Box>
+						{view === "courses" && (
+							<CourseManager
+								courses={courses}
+								onCoursesChange={setCourses}
+								importCSV={handleCsvImport}
+							/>
+						)}
 
-            {view === 'grades' && (
-              <div className="animate-in fade-in-50 duration-300">
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 3xl:gap-12">
-                  <div className="@container">
-                    <GradeManager
-                      grades={grades}
-                      activeGrade={activeGrade}
-                      setActiveGrade={setActiveGrade}
-                      allCourses={courses}
-                    />
-                  </div>
-                  <div className="@container">
-                    <PreferenceManager
-                      preferenceSet={preferenceSet}
-                      onPreferenceSetChange={setPreferenceSet}
-                      availableCourseCodes={availableCourseCodes}
-                      availableProfessors={availableProfessors}
-                      availableDestCodes={availableDestCodes}
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
+						{view === "grades" && (
+							<Flex direction={{ base: "column", xl: "row" }} gap={8}>
+								<Box flex={1}>
+									<GradeManager
+										grades={grades}
+										activeGrade={activeGrade}
+										setActiveGrade={setActiveGrade}
+										allCourses={courses}
+									/>
+								</Box>
+								<Box flex={1}>
+									<PreferenceManager
+										preferenceSet={preferenceSet}
+										onPreferenceSetChange={setPreferenceSet}
+										availableCourseCodes={availableCourseCodes}
+										availableProfessors={availableProfessors}
+										availableDestCodes={availableDestCodes}
+									/>
+								</Box>
+							</Flex>
+						)}
 
-            {view === 'manual' && (
-              <div className="animate-in fade-in-50 duration-300">
-                <ManualGradeCreator
-                  allCourses={courses}
-                  availableClasses={availableClasses}
-                  preferenceSet={preferenceSet}
-                />
-              </div>
-            )}
-          </div>
-        </main>
-      </div>
-    </div>
-  );
+						{view === "manual" && (
+							<ManualGradeCreator
+								allCourses={courses}
+								availableClasses={availableClasses}
+								preferenceSet={preferenceSet}
+							/>
+						)}
+					</Box>
+				</VStack>
+			</Container>
+		</Box>
+	);
 }
 
 export default App;

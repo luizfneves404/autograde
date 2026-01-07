@@ -1,41 +1,38 @@
-import React from 'react';
+import { Button, Flex, Text } from "@chakra-ui/react";
+import type React from "react";
 
 interface GradeControlsProps {
-  currentGradeIndex: number;
-  totalGrades: number;
-  goToPrevious: () => void;
-  goToNext: () => void;
+	currentGradeIndex: number;
+	totalGrades: number;
+	goToPrevious: () => void;
+	goToNext: () => void;
 }
 
 export const GradeControls: React.FC<GradeControlsProps> = ({
-  currentGradeIndex,
-  totalGrades,
-  goToPrevious,
-  goToNext,
+	currentGradeIndex,
+	totalGrades,
+	goToPrevious,
+	goToNext,
 }) => {
-  const isControlDisabled = totalGrades <= 1;
+	const isControlDisabled = totalGrades <= 1;
 
-  return (
-    <div className="flex items-center gap-4">
-      <button
-        onClick={goToPrevious}
-        disabled={isControlDisabled}
-        className="btn-secondary"
-      >
-        ← Anterior
-      </button>
+	return (
+		<Flex align="center" gap={4}>
+			<Button
+				onClick={goToPrevious}
+				disabled={isControlDisabled}
+				variant="outline"
+			>
+				← Anterior
+			</Button>
 
-      <span className="font-semibold text-neutral-700 text-sm tabular-nums">
-        Grade {currentGradeIndex + 1} de {totalGrades}
-      </span>
+			<Text fontWeight="semibold" color="gray.700" fontSize="sm">
+				Grade {currentGradeIndex + 1} de {totalGrades}
+			</Text>
 
-      <button
-        onClick={goToNext}
-        disabled={isControlDisabled}
-        className="btn-secondary"
-      >
-        Próxima →
-      </button>
-    </div>
-  );
+			<Button onClick={goToNext} disabled={isControlDisabled} variant="outline">
+				Próxima →
+			</Button>
+		</Flex>
+	);
 };
