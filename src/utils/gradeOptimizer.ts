@@ -433,11 +433,6 @@ export function evaluateConstraint(
 				`Unsupported constraint operation: ${JSON.stringify(node)}`,
 			);
 	}
-
-	return {
-		satisfied: true,
-		reasons: mode === "explain" ? ["Constraint satisfied"] : [],
-	};
 }
 
 function evaluateClassPredicate(
@@ -674,6 +669,10 @@ export const generateOptimizedGrades = (
 		if (courseIndex === filteredCourses.length) {
 			if (selectedCourses.length === 0) return;
 
+			if (!validateCoRequisites(selectedCourses, allCourses)) {
+				return;
+			}
+
 			// Early credit check
 			const minCredits = selectedCourses.reduce((sum, courseCode) => {
 				const course = allCourses[courseCode];
@@ -780,6 +779,40 @@ function filterCoursesByConstraints(
 	}
 
 	return availableCourses;
+}
+
+/**
+ * Validates that all co-requisites are present in the selected set.
+ * Checks both unidirectional and bidirectional co-requisites.
+ */
+function validateCoRequisites(
+	selectedCourses: string[],
+	allCourses: Record<string, Course>,
+): boolean {
+	const selectedSet = new Set(selectedCourses);
+
+	for (const code of selectedCourses) {
+		const course = allCourses[code];
+		if (!course) continue;
+
+		if (course.unidirCoRequisites) {
+			for (const req of course.unidirCoRequisites) {
+				if (!selectedSet.has(req)) {
+					return false;
+				}
+			}
+		}
+
+		if (course.bidirCoRequisites) {
+			for (const req of course.bidirCoRequisites) {
+				if (!selectedSet.has(req)) {
+					return false;
+				}
+			}
+		}
+	}
+
+	return true;
 }
 
 function hasTimeConflict(
