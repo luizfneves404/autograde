@@ -9,7 +9,6 @@ import {
 	IconButton,
 	Input,
 	Pagination,
-	Span,
 	Text,
 	VStack,
 } from "@chakra-ui/react";

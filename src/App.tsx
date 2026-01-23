@@ -1,5 +1,4 @@
 import {
-	Accordion,
 	Box,
 	Button,
 	Container,
@@ -7,7 +6,6 @@ import {
 	FileUpload,
 	Flex,
 	Heading,
-	Span,
 	Tabs,
 	Text,
 	VStack,
@@ -41,34 +39,6 @@ function App() {
 	const appDataBlob = new Blob([JSON.stringify(dataToExport, null, 2)], {
 		type: "application/json",
 	});
-
-	const items = [
-		{ value: "a", title: "First Item", text: "gvugutgkcvugkcvhjtk" },
-		{ value: "b", title: "Second Item", text: "gvjhtydfchgc" },
-		{ value: "c", title: "Third Item", text: "hgylguiyfgvf" },
-	];
-	<Accordion.Root collapsible defaultValue={["b"]}>
-		{items.map((item, index) => (
-			<Accordion.Item key={index} value={item.value}>
-				<Box position="relative">
-					<Accordion.ItemTrigger>
-						<Span flex="1">{item.title}</Span>
-						<Accordion.ItemIndicator />
-					</Accordion.ItemTrigger>
-				</Box>
-				<Accordion.ItemContent>
-					<Accordion.ItemBody>
-						<Flex direction={"column"}>
-							<Text>{item.text}</Text>
-							<Button variant="subtle" colorPalette="blue">
-								Action
-							</Button>
-						</Flex>
-					</Accordion.ItemBody>
-				</Accordion.ItemContent>
-			</Accordion.Item>
-		))}
-	</Accordion.Root>;
 
 	return (
 		<Container py={8}>
