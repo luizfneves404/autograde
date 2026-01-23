@@ -1,11 +1,13 @@
 import {
 	Box,
 	Button,
+	Combobox,
+	createListCollection,
+	Field,
 	Flex,
 	Heading,
 	Input,
-	NativeSelectField,
-	NativeSelectRoot,
+	Portal,
 	Text,
 	VStack,
 } from "@chakra-ui/react";
@@ -53,24 +55,33 @@ export function ScheduleEditor({ schedule, onChange }: ScheduleEditorProps) {
 		getInitialState(),
 	);
 
-	const handleInputChange = (
-		field: "day" | "startHour" | "endHour",
-		value: string,
-	) => {
-		setNewClassTime((prev) => {
-			if (field === "day") {
-				return { ...prev, day: value as DayOfWeek };
-			}
+	const dayCollection = createListCollection({
+		items: DAYS.map((day) => ({
+			label: day.charAt(0).toUpperCase() + day.slice(1),
+			value: day,
+		})),
+	});
 
-			const parsedValue = parseInt(value, 10);
-			return {
+	const handleDayChange = (details: Combobox.ValueChangeDetails) => {
+		if (details.value.length > 0) {
+			setNewClassTime((prev) => ({
 				...prev,
-				slot: {
-					...prev.slot,
-					[field]: isNaN(parsedValue) ? undefined : parsedValue,
-				},
-			};
-		});
+				day: details.value[0] as DayOfWeek,
+			}));
+		} else {
+			setNewClassTime((prev) => ({ ...prev, day: undefined }));
+		}
+	};
+
+	const handleInputChange = (field: "startHour" | "endHour", value: string) => {
+		const parsedValue = parseInt(value, 10);
+		setNewClassTime((prev) => ({
+			...prev,
+			slot: {
+				...prev.slot,
+				[field]: Number.isNaN(parsedValue) ? undefined : parsedValue,
+			},
+		}));
 	};
 
 	const addClassTime = () => {
@@ -94,8 +105,8 @@ export function ScheduleEditor({ schedule, onChange }: ScheduleEditorProps) {
 	};
 
 	return (
-		<Box p={4} bg="gray.50" borderRadius="lg">
-			<Heading size="sm" mb={3} color="gray.700">
+		<Box p={4} layerStyle="fill.subtle" borderRadius="lg">
+			<Heading size="sm" mb={3}>
 				Horário de Aulas
 			</Heading>
 
@@ -107,67 +118,84 @@ export function ScheduleEditor({ schedule, onChange }: ScheduleEditorProps) {
 				borderWidth="1px"
 				borderRadius="md"
 			>
-				<NativeSelectRoot flex={2}>
-					<NativeSelectField
-						value={newClassTime.day || ""}
-						onChange={(e) => {
-							handleInputChange("day", e.target.value);
-						}}
+				<Box flex={2}>
+					<Combobox.Root
+						collection={dayCollection}
+						value={newClassTime.day ? [newClassTime.day] : []}
+						onValueChange={handleDayChange}
+						placeholder="Selecione o Dia"
 					>
-						<option value="">Selecione o Dia</option>
-						{DAYS.map((day) => (
-							<option key={day} value={day}>
-								{day.charAt(0).toUpperCase() + day.slice(1)}
-							</option>
-						))}
-					</NativeSelectField>
-				</NativeSelectRoot>
-				<Input
-					type="number"
-					min={0}
-					max={23}
-					placeholder="Início"
-					value={newClassTime.slot?.startHour ?? ""}
-					onChange={(e) => {
-						handleInputChange("startHour", e.target.value);
-					}}
-					flex={1}
-				/>
-				<Input
-					type="number"
-					min={1}
-					max={24}
-					placeholder="Término"
-					value={newClassTime.slot?.endHour ?? ""}
-					onChange={(e) => {
-						handleInputChange("endHour", e.target.value);
-					}}
-					flex={1}
-				/>
+						<Combobox.Control>
+							<Combobox.Input />
+							<Combobox.IndicatorGroup>
+								<Combobox.ClearTrigger />
+								<Combobox.Trigger />
+							</Combobox.IndicatorGroup>
+						</Combobox.Control>
+						<Portal>
+							<Combobox.Positioner>
+								<Combobox.Content>
+									{dayCollection.items.map((item) => (
+										<Combobox.Item item={item} key={item.value}>
+											{item.label}
+											<Combobox.ItemIndicator />
+										</Combobox.Item>
+									))}
+								</Combobox.Content>
+							</Combobox.Positioner>
+						</Portal>
+					</Combobox.Root>
+				</Box>
+				<Field.Root flex={1}>
+					<Field.Label srOnly>Hora de Início</Field.Label>
+					<Input
+						type="number"
+						min={0}
+						max={23}
+						placeholder="Início"
+						value={newClassTime.slot?.startHour ?? ""}
+						onChange={(e) => {
+							handleInputChange("startHour", e.target.value);
+						}}
+					/>
+				</Field.Root>
+				<Field.Root flex={1}>
+					<Field.Label srOnly>Hora de Término</Field.Label>
+					<Input
+						type="number"
+						min={1}
+						max={24}
+						placeholder="Término"
+						value={newClassTime.slot?.endHour ?? ""}
+						onChange={(e) => {
+							handleInputChange("endHour", e.target.value);
+						}}
+					/>
+				</Field.Root>
 				<Button onClick={addClassTime} colorPalette="blue">
 					Adicionar
 				</Button>
 			</Flex>
 
 			{schedule.length === 0 ? (
-				<Box textAlign="center" py={4} color="gray.500" fontStyle="italic">
+				<Box textAlign="center" py={4} color="fg.subtle" fontStyle="italic">
 					Nenhum horário de aulas definido ainda.
 				</Box>
 			) : (
 				<VStack gap={2} align="stretch">
 					{schedule.map((ct, index) => (
 						<Flex
-							key={index}
+							key={`${ct.day}-${ct.slot.startHour}-${ct.slot.endHour}`}
 							justify="space-between"
 							align="center"
 							px={3}
 							py={2}
-							bg="white"
+							bg="bg"
 							borderWidth="1px"
-							borderColor="gray.200"
+							borderColor="border.muted"
 							borderRadius="md"
 						>
-							<Text fontWeight="medium" color="gray.800">
+							<Text fontWeight="medium">
 								{ct.day.charAt(0).toUpperCase() + ct.day.slice(1)}{" "}
 								{formatTime(ct.slot.startHour)}-{formatTime(ct.slot.endHour)}
 							</Text>

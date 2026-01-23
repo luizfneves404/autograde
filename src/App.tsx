@@ -1,33 +1,35 @@
 import {
+	Accordion,
 	Box,
 	Button,
 	Container,
+	DownloadTrigger,
+	FileUpload,
 	Flex,
 	Heading,
-	Input,
+	Span,
+	Tabs,
 	Text,
 	VStack,
 } from "@chakra-ui/react";
+
 import { CourseManager } from "@components/CourseManager";
 import { GradeManager } from "@components/GradeManager";
 import { ManualGradeCreator } from "@components/ManualGradeCreator";
 import { PreferenceManager } from "@components/PreferenceManager";
+import { HiUpload } from "react-icons/hi";
 import { useAppData } from "@/hooks/useAppData";
+import type { AppData } from "@/types";
 
 function App() {
 	const {
-		view,
-		setView,
 		courses,
 		setCourses,
 		preferenceSet,
 		setPreferenceSet,
 		grades,
-		activeGrade,
-		setActiveGrade,
 		handleJsonImport,
 		handleCsvImport,
-		handleExport,
 		handleGenerateGrades,
 		availableCourseCodes,
 		availableClasses,
@@ -35,130 +37,119 @@ function App() {
 		availableDestCodes,
 	} = useAppData();
 
-	return (
-		<Box minH="100vh" bg="gray.50">
-			<Container maxW="container.xl" py={8}>
-				<VStack gap={8} align="stretch">
-					{/* Header */}
-					<Box textAlign="center">
-						<Heading size="2xl" mb={2}>
-							AutoGrade
-						</Heading>
-						<Text fontSize="xl" color="gray.600">
-							Seu assistente inteligente para otimização de grades horárias
-						</Text>
-					</Box>
+	const dataToExport: AppData = { courses, preferenceSet };
+	const appDataBlob = new Blob([JSON.stringify(dataToExport, null, 2)], {
+		type: "application/json",
+	});
 
-					{/* Navigation */}
-					<Box
-						bg="white"
-						p={6}
-						borderRadius="lg"
-						shadow="sm"
-						border="1px solid"
-						borderColor="gray.200"
-					>
-						<Flex
-							direction={{ base: "column", md: "row" }}
-							gap={4}
-							justify="space-between"
-							align="center"
-						>
-							{/* Tab Buttons */}
-							<Flex gap={2} wrap="wrap">
-								<Button
-									onClick={() => setView("courses")}
-									variant={view === "courses" ? "solid" : "outline"}
-									colorPalette={view === "courses" ? "blue" : "gray"}
-								>
-									📚 Disciplinas
-								</Button>
-								<Button
-									onClick={() => setView("grades")}
-									variant={view === "grades" ? "solid" : "outline"}
-									colorPalette={view === "grades" ? "blue" : "gray"}
-								>
-									⚡ Grades & Preferências
-								</Button>
-								<Button
-									onClick={() => setView("manual")}
-									variant={view === "manual" ? "solid" : "outline"}
-									colorPalette={view === "manual" ? "blue" : "gray"}
-								>
-									✏️ Grade Manual
-								</Button>
-							</Flex>
-
-							{/* Action Buttons */}
-							<Flex gap={3} wrap="wrap">
-								<Button as="label" variant="outline" cursor="pointer">
-									📁 Importar
-									<Input
-										type="file"
-										display="none"
-										accept=".json"
-										onChange={handleJsonImport}
-									/>
-								</Button>
-
-								<Button onClick={handleExport} variant="outline">
-									💾 Exportar
-								</Button>
-
-								<Button
-									onClick={handleGenerateGrades}
-									colorPalette="blue"
-									fontWeight="semibold"
-								>
-									⚡ Gerar Grades
-								</Button>
-							</Flex>
+	const items = [
+		{ value: "a", title: "First Item", text: "gvugutgkcvugkcvhjtk" },
+		{ value: "b", title: "Second Item", text: "gvjhtydfchgc" },
+		{ value: "c", title: "Third Item", text: "hgylguiyfgvf" },
+	];
+	<Accordion.Root collapsible defaultValue={["b"]}>
+		{items.map((item, index) => (
+			<Accordion.Item key={index} value={item.value}>
+				<Box position="relative">
+					<Accordion.ItemTrigger>
+						<Span flex="1">{item.title}</Span>
+						<Accordion.ItemIndicator />
+					</Accordion.ItemTrigger>
+				</Box>
+				<Accordion.ItemContent>
+					<Accordion.ItemBody>
+						<Flex direction={"column"}>
+							<Text>{item.text}</Text>
+							<Button variant="subtle" colorPalette="blue">
+								Action
+							</Button>
 						</Flex>
-					</Box>
+					</Accordion.ItemBody>
+				</Accordion.ItemContent>
+			</Accordion.Item>
+		))}
+	</Accordion.Root>;
 
-					{/* Main Content */}
-					<Box>
-						{view === "courses" && (
-							<CourseManager
-								courses={courses}
-								onCoursesChange={setCourses}
-								importCSV={handleCsvImport}
-							/>
-						)}
+	return (
+		<Container py={8}>
+			<VStack gap={8} align="stretch">
+				{/* Header */}
+				<Box textAlign="center">
+					<Heading size="2xl">AutoGrade</Heading>
+					<Text fontSize="xl" color="fg.muted">
+						Seu assistente inteligente para otimização de grades horárias
+					</Text>
+				</Box>
 
-						{view === "grades" && (
-							<Flex direction={{ base: "column", xl: "row" }} gap={8}>
-								<Box flex={1}>
-									<GradeManager
-										grades={grades}
-										activeGrade={activeGrade}
-										setActiveGrade={setActiveGrade}
-										allCourses={courses}
-									/>
-								</Box>
-								<Box flex={1}>
-									<PreferenceManager
-										preferenceSet={preferenceSet}
-										onPreferenceSetChange={setPreferenceSet}
-										availableCourseCodes={availableCourseCodes}
-										availableProfessors={availableProfessors}
-										availableDestCodes={availableDestCodes}
-									/>
-								</Box>
-							</Flex>
-						)}
+				{/* Navigation and Content */}
+				<Tabs.Root defaultValue="courses">
+					<Flex justify="space-between">
+						<Tabs.List>
+							<Tabs.Trigger value="courses">📚 Disciplinas</Tabs.Trigger>
+							<Tabs.Trigger value="grades">
+								⚡ Grades & Preferências
+							</Tabs.Trigger>
+							<Tabs.Trigger value="manual">✏️ Grade Manual</Tabs.Trigger>
+						</Tabs.List>
 
-						{view === "manual" && (
-							<ManualGradeCreator
-								allCourses={courses}
-								availableClasses={availableClasses}
+						<Flex>
+							<FileUpload.Root
+								accept={["application/json", ".json"]}
+								maxFiles={1}
+							>
+								<FileUpload.HiddenInput onChange={handleJsonImport} />
+								<FileUpload.Trigger asChild>
+									<Button variant="outline">
+										<HiUpload /> Importar
+									</Button>
+								</FileUpload.Trigger>
+							</FileUpload.Root>
+							<DownloadTrigger
+								data={appDataBlob}
+								fileName={`autograde_data_${new Date().toISOString()}.json`}
+								mimeType="application/json"
+								asChild
+							>
+								<Button variant="outline">💾 Exportar</Button>
+							</DownloadTrigger>
+							<Button onClick={handleGenerateGrades} colorPalette="blue">
+								⚡ Gerar Grades
+							</Button>
+						</Flex>
+					</Flex>
+
+					{/* Main Content Area */}
+					<Tabs.Content value="courses">
+						<CourseManager
+							courses={courses}
+							onCoursesChange={setCourses}
+							importCSV={handleCsvImport}
+						/>
+					</Tabs.Content>
+
+					<Tabs.Content value="grades">
+						<Flex direction={{ base: "column", xl: "row" }} gap={8}>
+							<GradeManager grades={grades} allCourses={courses} />
+							<PreferenceManager
 								preferenceSet={preferenceSet}
+								onPreferenceSetChange={setPreferenceSet}
+								availableCourseCodes={availableCourseCodes}
+								availableProfessors={availableProfessors}
+								availableDestCodes={availableDestCodes}
 							/>
-						)}
-					</Box>
-				</VStack>
-			</Container>
-		</Box>
+						</Flex>
+					</Tabs.Content>
+
+					<Tabs.Content value="manual">
+						<ManualGradeCreator
+							allCourses={courses}
+							availableClasses={availableClasses}
+							preferenceSet={preferenceSet}
+						/>
+					</Tabs.Content>
+				</Tabs.Root>
+			</VStack>
+		</Container>
 	);
 }
 

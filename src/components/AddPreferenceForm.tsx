@@ -1,16 +1,17 @@
 import {
 	Box,
 	Button,
-	Checkbox,
-	Grid,
+	Combobox,
+	createListCollection,
+	Field,
 	Input,
-	NativeSelectField,
-	NativeSelectRoot,
+	Listbox,
+	Portal,
 	Text,
 	VStack,
 } from "@chakra-ui/react";
 import SearchAndAdd from "@components/SearchAndAdd";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { DAYS } from "@/constants";
 import type { DayOfWeek, TimeSlot, UIConstraint } from "@/types";
 import {
@@ -55,7 +56,7 @@ const constraintTemplates = {
 		],
 		build: (params: { courses: string[] }) => ({
 			name: "Disciplinas Disponíveis",
-			description: `Deve incluir as disciplinas: ${params.courses.join(", ")}.`,
+			description: `Conjunto de todas as disciplinas que podem ser incluídas na grade.`,
 			expression: availableCourses(params.courses),
 		}),
 	},
@@ -70,7 +71,7 @@ const constraintTemplates = {
 		],
 		build: (params: { courses: string[] }) => ({
 			name: "Disciplinas Obrigatórias",
-			description: `Deve incluir as disciplinas: ${params.courses.join(", ")}.`,
+			description: `Deve incluir todas as disciplinas listadas, obrigatoriamente.`,
 			expression: minimumCoursesSet(params.courses),
 		}),
 	},
@@ -85,7 +86,7 @@ const constraintTemplates = {
 		],
 		build: (params: { courses: string[] }) => ({
 			name: "Combinação Proibida",
-			description: `Não cursar simultaneamente: ${params.courses.join(", ")}.`,
+			description: `Não cursar simultaneamente as disciplinas listadas.`,
 			expression: forbidCourseCombo(params.courses),
 		}),
 	},
@@ -100,7 +101,7 @@ const constraintTemplates = {
 		],
 		build: (params: { courses: string[] }) => ({
 			name: "Disciplinas Proibidas",
-			description: `Não cursar nenhuma destas: ${params.courses.join(", ")}.`,
+			description: `Não cursar nenhuma das disciplinas listadas.`,
 			expression: forbidEachCourse(params.courses),
 		}),
 	},
@@ -115,7 +116,7 @@ const constraintTemplates = {
 		],
 		build: (params: { professors: string[] }) => ({
 			name: "Professores Preferenciais",
-			description: `Todas as turmas devem ser com: ${params.professors.join(", ")}.`,
+			description: `Todas as turmas devem ser com os professores listados.`,
 			expression: propertyValueIn("professorName", params.professors),
 		}),
 	},
@@ -130,7 +131,7 @@ const constraintTemplates = {
 		],
 		build: (params: { max: string }) => ({
 			name: "Créditos Máximos",
-			description: `A soma dos créditos não deve exceder ${params.max}.`,
+			description: `A soma dos créditos não deve exceder o valor informado.`,
 			expression: maxCreditLoad(Number(params.max)),
 		}),
 	},
@@ -145,7 +146,7 @@ const constraintTemplates = {
 		],
 		build: (params: { min: string }) => ({
 			name: "Créditos Mínimos",
-			description: `A soma dos créditos deve ser pelo menos ${params.min}.`,
+			description: `A soma dos créditos deve ser pelo menos o valor informado.`,
 			expression: minCreditLoad(Number(params.min)),
 		}),
 	},
@@ -169,13 +170,27 @@ const constraintTemplates = {
 		],
 		build: (params: { days: DayOfWeek[] }) => ({
 			name: "Dias Proibidos",
-			description: `Não permitir aulas em: ${params.days.join(", ")}.`,
+			description: `Não permitir nenhuma aula nos dias listados.`,
 			expression: forbidClassesOnDays(params.days),
 		}),
 	},
 } as const;
 
 type ConstraintType = keyof typeof constraintTemplates;
+
+const buildConstraintFromTemplate = <K extends ConstraintType>(
+	type: K,
+	values: ParamValues,
+) => {
+	const template = constraintTemplates[type];
+	const buildFn = template.build as (
+		params: Parameters<(typeof constraintTemplates)[K]["build"]>[0],
+	) => ReturnType<(typeof constraintTemplates)[K]["build"]>;
+	const specificParams = values as Parameters<
+		(typeof constraintTemplates)[K]["build"]
+	>[0];
+	return buildFn(specificParams);
+};
 
 function getStringArrayParam(params: ParamValues, name: string): string[] {
 	const value = params[name];
@@ -218,6 +233,28 @@ function AddPreferenceForm({
 	const [constraintType, setConstraintType] = useState<ConstraintType | "">("");
 	const [params, setParams] = useState<ParamValues>({});
 
+	const constraintTypeCollection = useMemo(
+		() =>
+			createListCollection({
+				items: Object.entries(constraintTemplates).map(([key, { label }]) => ({
+					label,
+					value: key,
+				})),
+			}),
+		[],
+	);
+
+	const dayCollection = useMemo(
+		() =>
+			createListCollection({
+				items: DAYS.map((day) => ({
+					label: day.charAt(0).toUpperCase() + day.slice(1),
+					value: day,
+				})),
+			}),
+		[],
+	);
+
 	const initializeParamsForConstraint = (type: ConstraintType) => {
 		const template = constraintTemplates[type];
 		const initialParams: ParamValues = {};
@@ -240,8 +277,11 @@ function AddPreferenceForm({
 		return initialParams;
 	};
 
-	const handleTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-		const newType = e.target.value as ConstraintType | "";
+	const handleTypeChange = (details: Combobox.ValueChangeDetails) => {
+		const newType =
+			details.value.length > 0
+				? (details.value[0] as ConstraintType)
+				: ("" as ConstraintType | "");
 		setConstraintType(newType);
 
 		if (newType === "") {
@@ -268,14 +308,13 @@ function AddPreferenceForm({
 		}));
 	};
 
-	const handleDayOfWeekChange = (paramName: string, day: DayOfWeek) => {
-		const current = getDayOfWeekArrayParam(params, paramName);
-		const newSelection = current.includes(day)
-			? current.filter((d) => d !== day)
-			: [...current, day];
+	const handleDayOfWeekChange = (
+		paramName: string,
+		details: Listbox.ValueChangeDetails,
+	) => {
 		setParams((prev: ParamValues) => ({
 			...prev,
-			[paramName]: newSelection,
+			[paramName]: details.value as DayOfWeek[],
 		}));
 	};
 
@@ -296,7 +335,10 @@ function AddPreferenceForm({
 		}
 
 		try {
-			const builtConstraint = template.build(params as any);
+			const builtConstraint = buildConstraintFromTemplate(
+				constraintType,
+				params,
+			);
 			onAddConstraint({ ...builtConstraint, id: generateId(), enabled: true });
 
 			setConstraintType("");
@@ -314,34 +356,46 @@ function AddPreferenceForm({
 	return (
 		<Box as="form" onSubmit={handleSubmit}>
 			<VStack gap={4} align="stretch">
-				<NativeSelectRoot>
-					<NativeSelectField value={constraintType} onChange={handleTypeChange}>
-						<option value="" disabled>
-							Selecione um tipo de restrição...
-						</option>
-						{Object.entries(constraintTemplates).map(([key, { label }]) => (
-							<option key={key} value={key}>
-								{label}
-							</option>
-						))}
-					</NativeSelectField>
-				</NativeSelectRoot>
+				<Combobox.Root
+					collection={constraintTypeCollection}
+					value={constraintType ? [constraintType] : []}
+					onValueChange={handleTypeChange}
+					placeholder="Selecione um tipo de restrição..."
+				>
+					<Combobox.Control>
+						<Combobox.Input />
+						<Combobox.IndicatorGroup>
+							<Combobox.ClearTrigger />
+							<Combobox.Trigger />
+						</Combobox.IndicatorGroup>
+					</Combobox.Control>
+					<Portal>
+						<Combobox.Positioner>
+							<Combobox.Content>
+								{constraintTypeCollection.items.map((item) => (
+									<Combobox.Item item={item} key={item.value}>
+										{item.label}
+										<Combobox.ItemIndicator />
+									</Combobox.Item>
+								))}
+							</Combobox.Content>
+						</Combobox.Positioner>
+					</Portal>
+				</Combobox.Root>
 
 				{currentTemplate && (
-					<Box p={4} borderWidth="1px" borderRadius="md" bg="white">
+					<Box p={4} borderWidth="1px" borderRadius="md" bg="bg">
 						<VStack gap={3} align="stretch">
 							{currentTemplate.params.length === 0 ? (
-								<Text fontSize="sm" color="gray.600">
+								<Text textStyle="sm" color="fg.muted">
 									Esta restrição não precisa de parâmetros adicionais.
 								</Text>
 							) : (
 								currentTemplate.params.map((param) => (
 									<Box key={param.name}>
 										{param.type === "number" && (
-											<>
-												<Text fontSize="sm" fontWeight="medium" mb={2}>
-													{param.label}
-												</Text>
+											<Field.Root>
+												<Field.Label>{param.label}</Field.Label>
 												<Input
 													type="number"
 													name={param.name}
@@ -350,7 +404,7 @@ function AddPreferenceForm({
 													required
 													min={1}
 												/>
-											</>
+											</Field.Root>
 										)}
 
 										{param.type === "multi-select-course" && (
@@ -378,34 +432,30 @@ function AddPreferenceForm({
 										)}
 
 										{param.type === "multi-select-day-of-week" && (
-											<>
-												<Text fontSize="sm" fontWeight="medium" mb={2}>
+											<Box>
+												<Text textStyle="sm" fontWeight="medium" mb={2}>
 													{param.label}
 												</Text>
-												<Grid templateColumns="repeat(2, 1fr)" gap={2}>
-													{DAYS.map((day) => {
-														const currentDays = getDayOfWeekArrayParam(
-															params,
-															param.name,
-														);
-														return (
-															<Checkbox.Root
-																key={day}
-																checked={currentDays.includes(day)}
-																onCheckedChange={() => {
-																	handleDayOfWeekChange(param.name, day);
-																}}
-															>
-																<Checkbox.HiddenInput />
-																<Checkbox.Control />
-																<Checkbox.Label>
-																	<Text fontSize="sm">{day}</Text>
-																</Checkbox.Label>
-															</Checkbox.Root>
-														);
-													})}
-												</Grid>
-											</>
+												<Listbox.Root
+													collection={dayCollection}
+													selectionMode="multiple"
+													value={getDayOfWeekArrayParam(params, param.name)}
+													onValueChange={(details) => {
+														handleDayOfWeekChange(param.name, details);
+													}}
+												>
+													<Listbox.Content>
+														{dayCollection.items.map((item) => (
+															<Listbox.Item item={item} key={item.value}>
+																<Listbox.ItemText>
+																	{item.label}
+																</Listbox.ItemText>
+																<Listbox.ItemIndicator />
+															</Listbox.Item>
+														))}
+													</Listbox.Content>
+												</Listbox.Root>
+											</Box>
 										)}
 									</Box>
 								))

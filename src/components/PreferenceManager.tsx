@@ -2,10 +2,12 @@ import {
 	Badge,
 	Box,
 	Button,
-	Checkbox,
+	Card,
+	createListCollection,
 	Flex,
 	Grid,
 	Heading,
+	Listbox,
 	Separator,
 	Text,
 	VStack,
@@ -73,12 +75,19 @@ export function PreferenceManager({
 		);
 	}, [availableDestCodes]);
 
-	const handleDestCodeToggle = (code: string) => {
-		setPendingDestCodes((current) =>
-			current.includes(code)
-				? current.filter((c) => c !== code)
-				: [...current, code],
-		);
+	const destCodeCollection = useMemo(
+		() =>
+			createListCollection({
+				items: sortedAvailableDestCodes.map((code) => ({
+					label: getDestCodeName(code),
+					value: code,
+				})),
+			}),
+		[sortedAvailableDestCodes],
+	);
+
+	const handleDestCodeChange = (details: Listbox.ValueChangeDetails) => {
+		setPendingDestCodes(details.value);
 	};
 
 	const handleSaveDestCodes = () => {
@@ -101,165 +110,140 @@ export function PreferenceManager({
 			<Heading size="xl">Gerenciador de Preferências</Heading>
 
 			{/* DestCode Selection */}
-			<Box
-				bg="white"
-				p={6}
-				borderRadius="lg"
-				shadow="sm"
-				border="1px solid"
-				borderColor="gray.200"
-			>
-				<Heading size="md" mb={4}>
-					Códigos de Destino
-				</Heading>
+			<Card.Root variant="outline">
+				<Card.Header>
+					<Heading size="md">Códigos de Destino</Heading>
+				</Card.Header>
+				<Card.Body>
+					<Box>
+						<Heading size="sm" mb={2}>
+							Códigos Salvos:
+						</Heading>
+						<Flex wrap="wrap" gap={2}>
+							{preferenceSet.userDestCodes.length > 0 ? (
+								preferenceSet.userDestCodes.map((code) => (
+									<Badge key={code} size="lg" colorPalette="blue">
+										{getDestCodeName(code)}
+									</Badge>
+								))
+							) : (
+								<Text textStyle="sm" color="fg.subtle" fontStyle="italic">
+									Nenhum código de destino salvo.
+								</Text>
+							)}
+						</Flex>
+					</Box>
 
-				<Box>
-					<Heading size="sm" color="gray.700" mb={2}>
-						Códigos Salvos:
-					</Heading>
-					<Flex wrap="wrap" gap={2}>
-						{preferenceSet.userDestCodes.length > 0 ? (
-							preferenceSet.userDestCodes.map((code) => (
-								<Badge key={code} size="lg" colorPalette="blue">
-									{getDestCodeName(code)}
-								</Badge>
-							))
-						) : (
-							<Text fontSize="sm" color="gray.500" fontStyle="italic">
-								Nenhum código de destino salvo.
-							</Text>
+					<Separator my={4} />
+
+					<Listbox.Root
+						collection={destCodeCollection}
+						selectionMode="multiple"
+						value={pendingDestCodes}
+						onValueChange={handleDestCodeChange}
+					>
+						<Listbox.Label fontWeight="semibold" mb={2}>
+							Selecione seus códigos:
+						</Listbox.Label>
+						<Listbox.Content
+							maxH="48"
+							overflowY="auto"
+							borderWidth="1px"
+							borderRadius="lg"
+							layerStyle="fill.subtle"
+						>
+							{destCodeCollection.items.map((item) => (
+								<Listbox.Item item={item} key={item.value}>
+									<Listbox.ItemText>{item.label}</Listbox.ItemText>
+									<Listbox.ItemIndicator />
+								</Listbox.Item>
+							))}
+						</Listbox.Content>
+					</Listbox.Root>
+
+					<Flex mt={4} justify="flex-end">
+						<Button onClick={handleSaveDestCodes} colorPalette="blue">
+							Salvar Códigos
+						</Button>
+					</Flex>
+				</Card.Body>
+			</Card.Root>
+
+			<Card.Root variant="outline">
+				<Card.Header>
+					<Heading size="md">Adicionar Nova Restrição</Heading>
+				</Card.Header>
+				<Card.Body>
+					<AddPreferenceForm
+						onAddConstraint={addConstraint}
+						availableCourseCodes={availableCourseCodes}
+						availableProfessors={availableProfessors}
+					/>
+				</Card.Body>
+			</Card.Root>
+
+			<Card.Root variant="outline">
+				<Card.Header>
+					<Flex wrap="wrap" justify="space-between" align="center" gap={4}>
+						<Heading size="md">
+							Restrições ({preferenceSet.hardConstraints.length})
+						</Heading>
+						{preferenceSet.hardConstraints.length > 0 && (
+							<Button onClick={clearConstraints} colorPalette="red" size="sm">
+								Limpar Todas
+							</Button>
 						)}
 					</Flex>
-				</Box>
-
-				<Separator my={4} />
-
-				<Box>
-					<Heading size="sm" color="gray.700" mb={2}>
-						Selecione seus códigos:
-					</Heading>
-					<Box
-						maxH="48"
-						overflowY="auto"
-						borderWidth="1px"
-						borderRadius="lg"
-						p={3}
-						bg="gray.50"
-					>
-						<VStack gap={2} align="stretch">
-							{sortedAvailableDestCodes.map((code) => (
-								<Checkbox.Root
-									key={code}
-									checked={pendingDestCodes.includes(code)}
-									onCheckedChange={() => {
-										handleDestCodeToggle(code);
+				</Card.Header>
+				<Card.Body>
+					{preferenceSet.hardConstraints.length === 0 ? (
+						<Text color="fg.subtle" fontStyle="italic" textStyle="sm">
+							Nenhuma restrição configurada. ☝️
+						</Text>
+					) : (
+						<VStack gap={4} align="stretch">
+							{preferenceSet.hardConstraints.map((constraint) => (
+								<PreferenceCard
+									key={constraint.id}
+									constraint={constraint}
+									onRemove={() => {
+										removeConstraint(constraint.id);
 									}}
-								>
-									<Checkbox.HiddenInput />
-									<Checkbox.Control />
-									<Checkbox.Label>{getDestCodeName(code)}</Checkbox.Label>
-								</Checkbox.Root>
+									onUpdate={(updates) => {
+										updateConstraint(constraint.id, updates);
+									}}
+								/>
 							))}
 						</VStack>
-					</Box>
-				</Box>
-
-				<Flex mt={4} justify="flex-end">
-					<Button onClick={handleSaveDestCodes} colorPalette="blue">
-						Salvar Códigos
-					</Button>
-				</Flex>
-			</Box>
-
-			<Box
-				bg="white"
-				p={6}
-				borderRadius="lg"
-				shadow="sm"
-				border="1px solid"
-				borderColor="gray.200"
-			>
-				<Heading size="md" mb={4}>
-					Adicionar Nova Restrição
-				</Heading>
-				<AddPreferenceForm
-					onAddConstraint={addConstraint}
-					availableCourseCodes={availableCourseCodes}
-					availableProfessors={availableProfessors}
-				/>
-			</Box>
-
-			<Box
-				bg="white"
-				p={6}
-				borderRadius="lg"
-				shadow="sm"
-				border="1px solid"
-				borderColor="gray.200"
-			>
-				<Flex wrap="wrap" justify="space-between" align="center" mb={4} gap={4}>
-					<Heading size="md">
-						Restrições ({preferenceSet.hardConstraints.length})
-					</Heading>
-					{preferenceSet.hardConstraints.length > 0 && (
-						<Button onClick={clearConstraints} colorPalette="red" size="sm">
-							Limpar Todas
-						</Button>
 					)}
-				</Flex>
+				</Card.Body>
+			</Card.Root>
 
-				{preferenceSet.hardConstraints.length === 0 ? (
-					<Text color="gray.500" fontStyle="italic" fontSize="sm">
-						Nenhuma restrição configurada. ☝️
-					</Text>
-				) : (
-					<VStack gap={4} align="stretch">
-						{preferenceSet.hardConstraints.map((constraint) => (
-							<PreferenceCard
-								key={constraint.id}
-								constraint={constraint}
-								onRemove={() => {
-									removeConstraint(constraint.id);
-								}}
-								onUpdate={(updates) => {
-									updateConstraint(constraint.id, updates);
-								}}
-							/>
-						))}
-					</VStack>
-				)}
-			</Box>
-
-			<Box
-				bg="gray.50"
-				p={6}
-				borderRadius="lg"
-				shadow="sm"
-				border="1px solid"
-				borderColor="gray.200"
-			>
-				<Heading size="md" color="gray.800" mb={4}>
-					Resumo
-				</Heading>
-				<Grid
-					templateColumns={{ base: "1fr", sm: "repeat(3, 1fr)" }}
-					gap={4}
-					fontSize="sm"
-				>
-					<Box fontWeight="medium" color="gray.600">
-						<Text as="span" fontWeight="semibold">
-							Total de Restrições:
-						</Text>{" "}
-						{summary.total}
-					</Box>
-					<Box fontWeight="medium" color="gray.600">
-						<Text as="span" fontWeight="semibold">
-							Restrições Ativas:
-						</Text>{" "}
-						{summary.active}
-					</Box>
-				</Grid>
-			</Box>
+			<Card.Root variant="outline" layerStyle="fill.subtle">
+				<Card.Header>
+					<Heading size="md">Resumo</Heading>
+				</Card.Header>
+				<Card.Body>
+					<Grid
+						templateColumns={{ base: "1fr", sm: "repeat(3, 1fr)" }}
+						gap={4}
+						textStyle="sm"
+					>
+						<Box fontWeight="medium" color="fg.muted">
+							<Text as="span" fontWeight="semibold">
+								Total de Restrições:
+							</Text>{" "}
+							{summary.total}
+						</Box>
+						<Box fontWeight="medium" color="fg.muted">
+							<Text as="span" fontWeight="semibold">
+								Restrições Ativas:
+							</Text>{" "}
+							{summary.active}
+						</Box>
+					</Grid>
+				</Card.Body>
+			</Card.Root>
 		</VStack>
 	);
 }

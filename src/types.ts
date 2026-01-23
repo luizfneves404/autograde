@@ -1,69 +1,68 @@
-export type DayOfWeek =
-	| "segunda"
-	| "terça"
-	| "quarta"
-	| "quinta"
-	| "sexta"
-	| "sábado";
+import { z } from "zod";
 
-export type TimeSlot = {
-	startHour: number; // 24-hour format
-	endHour: number; // 24-hour format
-};
+// ============================================================================
+// GROUP 1: Zod-First (No duplication) - Simple types inferred from schemas
+// ============================================================================
 
-export type ClassTime = {
-	day: DayOfWeek;
-	slot: TimeSlot;
-};
+export const DayOfWeekSchema = z.enum([
+	"segunda",
+	"terça",
+	"quarta",
+	"quinta",
+	"sexta",
+	"sábado",
+]);
+export type DayOfWeek = z.infer<typeof DayOfWeekSchema>;
 
-export type Schedule = ClassTime[];
+export const TimeSlotSchema = z.object({
+	startHour: z.number(),
+	endHour: z.number(),
+});
+export type TimeSlot = z.infer<typeof TimeSlotSchema>;
 
-export type Course = {
-	code: string; // unique
-	name: string;
-	shouldHavePreRequisites: boolean;
-	coRequisites: string[];
-	numCredits: number;
-	classes: CourseClass[];
-};
+export const ClassTimeSchema = z.object({
+	day: DayOfWeekSchema,
+	slot: TimeSlotSchema,
+});
+export type ClassTime = z.infer<typeof ClassTimeSchema>;
 
-export type CourseClass = {
-	classCode: string;
-	courseCode: string;
-	professorName: string;
-	distanceHours: number; // horas à distância
-	SHFHours: number; // horas sem horário fixo (SHF)
-	schedule: Schedule;
-	offerings: ClassOffering[];
-};
+export const ClassOfferingSchema = z.object({
+	classCode: z.string(),
+	courseCode: z.string(),
+	destCode: z.string(),
+	vacancyCount: z.number(),
+});
+export type ClassOffering = z.infer<typeof ClassOfferingSchema>;
+
+export const CourseClassSchema = z.object({
+	classCode: z.string(),
+	courseCode: z.string(),
+	professorName: z.string(),
+	distanceHours: z.number(),
+	SHFHours: z.number(),
+	schedule: z.array(ClassTimeSchema),
+	offerings: z.array(ClassOfferingSchema),
+});
+export type CourseClass = z.infer<typeof CourseClassSchema>;
+
+export const CourseSchema = z.object({
+	code: z.string(),
+	name: z.string(),
+	shouldHavePreRequisites: z.boolean(),
+	coRequisites: z.array(z.string()).default([]),
+	numCredits: z.number(),
+	classes: z.array(CourseClassSchema),
+});
+export type Course = z.infer<typeof CourseSchema>;
+
+// ============================================================================
+// GROUP 2: Type-First (Recursive/Complex) - ExprNode with schema bound to type
+// ============================================================================
 
 export type CourseClassForEval = CourseClass & {
 	numCredits: number;
 	shouldHavePreRequisites: boolean;
 	coRequisites: string[];
-};
-
-export type ClassOffering = {
-	classCode: string;
-	courseCode: string;
-	destCode: string;
-	vacancyCount: number;
-};
-
-export type ClassIdentifier = Pick<CourseClass, "classCode" | "courseCode">;
-
-export type ClassOfferingIdentifier = Pick<
-	ClassOffering,
-	"classCode" | "courseCode" | "destCode"
->;
-
-export type Grade = {
-	classes: CourseClass[];
-};
-
-export type AppData = {
-	courses: Record<string, Course>;
-	preferenceSet: PreferenceSet;
 };
 
 // Core constraint language - minimal and complete
@@ -121,15 +120,152 @@ export type ExprNode =
 			params: { days: DayOfWeek[] };
 	  };
 
-export type UIConstraint = {
-	id: string;
-	name: string;
-	description: string;
-	enabled: boolean;
-	expression: ExprNode;
-};
+// Bind the schema to the ExprNode type
+export const ExprNodeSchema: z.ZodType<ExprNode> = z.lazy(() =>
+	z.union([
+		// Boolean Logic
+		z.object({
+			op: z.enum(["and", "or"]),
+			children: z.array(ExprNodeSchema),
+		}),
+		z.object({
+			op: z.literal("not"),
+			child: ExprNodeSchema,
+		}),
 
-export type PreferenceSet = {
-	hardConstraints: UIConstraint[];
-	userDestCodes: string[];
+		// Class-level Predicate
+		z.object({
+			op: z.enum(["==", "!=", ">", "<", ">=", "<="]),
+			property: z.enum([
+				"numCredits",
+				"shouldHavePreRequisites",
+				"classCode",
+				"courseCode",
+				"professorName",
+				"distanceHours",
+				"SHFHours",
+				"schedule",
+				"offerings",
+				"coRequisites",
+			]),
+			value: z.union([z.string(), z.number()]),
+		}),
+		z.object({
+			op: z.literal("in"),
+			property: z.enum([
+				"numCredits",
+				"shouldHavePreRequisites",
+				"classCode",
+				"courseCode",
+				"professorName",
+				"distanceHours",
+				"SHFHours",
+				"schedule",
+				"offerings",
+				"coRequisites",
+			]),
+			value: z.union([z.array(z.string()), z.array(z.number())]),
+		}),
+		z.object({
+			op: z.literal("contains"),
+			property: z.enum([
+				"numCredits",
+				"shouldHavePreRequisites",
+				"classCode",
+				"courseCode",
+				"professorName",
+				"distanceHours",
+				"SHFHours",
+				"schedule",
+				"offerings",
+				"coRequisites",
+			]),
+			value: z.union([z.string(), z.number()]),
+		}),
+
+		// Schedule-level Quantifier
+		z.object({
+			op: z.enum(["some", "all"]),
+			predicate: ExprNodeSchema,
+		}),
+
+		// Aggregation
+		z.object({
+			op: z.literal("sum"),
+			property: z.enum([
+				"numCredits",
+				"shouldHavePreRequisites",
+				"classCode",
+				"courseCode",
+				"professorName",
+				"distanceHours",
+				"SHFHours",
+				"schedule",
+				"offerings",
+				"coRequisites",
+			]),
+			operator: z.enum(["==", "!=", ">", "<", ">=", "<="]),
+			value: z.number(),
+			predicate: ExprNodeSchema.optional(),
+		}),
+		z.object({
+			op: z.literal("count"),
+			predicate: ExprNodeSchema,
+			operator: z.enum(["==", "!=", ">", "<", ">=", "<="]),
+			value: z.number(),
+		}),
+
+		// Custom Nodes
+		z.object({
+			op: z.literal("custom"),
+			id: z.literal("no_gaps_by_day"),
+		}),
+		z.object({
+			op: z.literal("custom"),
+			id: z.literal("forbid_classes_on_days"),
+			params: z.object({ days: z.array(DayOfWeekSchema) }),
+		}),
+	]),
+);
+
+// ============================================================================
+// GROUP 3: Root App Data - Inferred from schemas
+// ============================================================================
+
+export const UIConstraintSchema = z.object({
+	id: z.string(),
+	name: z.string(),
+	description: z.string(),
+	enabled: z.boolean(),
+	expression: ExprNodeSchema,
+});
+export type UIConstraint = z.infer<typeof UIConstraintSchema>;
+
+export const PreferenceSetSchema = z.object({
+	hardConstraints: z.array(UIConstraintSchema),
+	userDestCodes: z.array(z.string()),
+});
+export type PreferenceSet = z.infer<typeof PreferenceSetSchema>;
+
+export const AppDataSchema = z.object({
+	courses: z.record(z.string(), CourseSchema),
+	preferenceSet: PreferenceSetSchema,
+});
+export type AppData = z.infer<typeof AppDataSchema>;
+
+// ============================================================================
+// Helper Types (not in schemas, derived from base types)
+// ============================================================================
+
+export type Schedule = ClassTime[];
+
+export type ClassIdentifier = Pick<CourseClass, "classCode" | "courseCode">;
+
+export type ClassOfferingIdentifier = Pick<
+	ClassOffering,
+	"classCode" | "courseCode" | "destCode"
+>;
+
+export type Grade = {
+	classes: CourseClass[];
 };

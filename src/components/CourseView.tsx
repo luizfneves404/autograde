@@ -14,8 +14,11 @@ function getRelationshipType(
 	const courseB = allCourses[courseBCode];
 	if (!courseB) return "none";
 
-	const aRequiresB = courseA.coRequisites.includes(courseBCode);
-	const bRequiresA = courseB.coRequisites.includes(courseA.code);
+	const aCoReqs = courseA.coRequisites || [];
+	const bCoReqs = courseB.coRequisites || [];
+
+	const aRequiresB = aCoReqs.includes(courseBCode);
+	const bRequiresA = bCoReqs.includes(courseA.code);
 
 	if (aRequiresB && bRequiresA) return "bidirectional";
 	if (aRequiresB) return "unidirectional";
@@ -30,18 +33,16 @@ export function CourseView({ course, allCourses }: CourseViewProps) {
 		<Flex direction={{ base: "column", sm: "row" }}>
 			<Text
 				fontWeight="semibold"
-				color="gray.600"
+				color="fg.muted"
 				w={{ base: "full", sm: "33%" }}
 			>
 				{label}:
 			</Text>
-			<Text color="gray.800" w={{ base: "full", sm: "67%" }}>
-				{value}
-			</Text>
+			<Text w={{ base: "full", sm: "67%" }}>{value}</Text>
 		</Flex>
 	);
 
-	const coRequisitesWithTypes = course.coRequisites.map((code) => {
+	const coRequisitesWithTypes = (course.coRequisites || []).map((code) => {
 		const relationshipType = getRelationshipType(course, code, allCourses);
 		const name = getNameByCode(code);
 		const symbol = relationshipType === "bidirectional" ? "↔" : "→";
@@ -58,15 +59,13 @@ export function CourseView({ course, allCourses }: CourseViewProps) {
 	return (
 		<Box flex={1}>
 			<Box mb={4}>
-				<Heading size="lg" color="gray.900">
-					{course.name}
-				</Heading>
-				<Text fontSize="md" color="gray.500">
+				<Heading size="lg">{course.name}</Heading>
+				<Text textStyle="md" color="fg.subtle">
 					{course.code}
 				</Text>
 			</Box>
 
-			<VStack gap={3} align="stretch" fontSize="sm">
+			<VStack gap={3} align="stretch" textStyle="sm">
 				{detailItem("Créditos", course.numCredits)}
 				{detailItem(
 					"Requer pré-requisitos",
@@ -74,7 +73,7 @@ export function CourseView({ course, allCourses }: CourseViewProps) {
 				)}
 				{detailItem(
 					"Co-requisitos",
-					course.coRequisites.length > 0 ? (
+					(course.coRequisites || []).length > 0 ? (
 						<VStack gap={1} align="stretch">
 							{bidirectional.length > 0 && (
 								<Box>

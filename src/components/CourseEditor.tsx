@@ -25,14 +25,17 @@ export function CourseEditor({
 	onSave,
 	onCancel,
 }: CourseEditorProps) {
-	const [edited, setEdited] = useState<Course>({ ...course });
+	const [edited, setEdited] = useState<Course>({
+		...course,
+		coRequisites: course.coRequisites || [],
+	});
 
 	const handleSave = () => {
 		if (!edited.code.trim() || !edited.name.trim()) {
 			alert("Por favor, preencha ambos o código e o nome");
 			return;
 		}
-		if (isNaN(edited.numCredits) || edited.numCredits <= 0) {
+		if (Number.isNaN(edited.numCredits) || edited.numCredits <= 0) {
 			alert("Por favor, insira um número de créditos válido.");
 			return;
 		}
@@ -42,12 +45,12 @@ export function CourseEditor({
 	return (
 		<Box
 			p={4}
-			bg="gray.50"
+			layerStyle="fill.subtle"
 			borderRadius="lg"
 			borderWidth="1px"
-			borderColor="blue.200"
+			borderColor="blue.border"
 		>
-			<Heading size="md" mb={4} color="gray.800">
+			<Heading size="md" mb={4}>
 				Editando: {course.code}
 			</Heading>
 			<VStack gap={4} align="stretch">

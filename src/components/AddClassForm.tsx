@@ -1,4 +1,12 @@
-import { Box, Button, Grid, Heading, Input, VStack } from "@chakra-ui/react";
+import {
+	Box,
+	Button,
+	Field,
+	Grid,
+	Heading,
+	Input,
+	VStack,
+} from "@chakra-ui/react";
 import { ScheduleEditor } from "@components/ScheduleEditor";
 import { useState } from "react";
 import type { ClassOffering, CourseClass } from "@/types";
@@ -49,31 +57,37 @@ export function AddClassForm({ onAddClass }: AddClassFormProps) {
 			my={4}
 			borderWidth="1px"
 			borderStyle="dashed"
-			borderColor="gray.300"
+			borderColor="border.muted"
 			borderRadius="lg"
 		>
-			<Heading size="md" mb={3} color="gray.700">
+			<Heading size="md" mb={3}>
 				Adicionar Nova Turma
 			</Heading>
 			<VStack gap={4} align="stretch">
 				<Grid templateColumns={{ base: "1fr", md: "repeat(2, 1fr)" }} gap={4}>
-					<Input
-						placeholder="Código da Turma (e.g., 3WA)"
-						value={newClass.classCode || ""}
-						onChange={(e) => {
-							setNewClass((prev) => ({ ...prev, classCode: e.target.value }));
-						}}
-					/>
-					<Input
-						placeholder="Nome do Professor"
-						value={newClass.professorName || ""}
-						onChange={(e) => {
-							setNewClass((prev) => ({
-								...prev,
-								professorName: e.target.value,
-							}));
-						}}
-					/>
+					<Field.Root>
+						<Field.Label>Código da Turma</Field.Label>
+						<Input
+							placeholder="Código da Turma (e.g., 3WA)"
+							value={newClass.classCode || ""}
+							onChange={(e) => {
+								setNewClass((prev) => ({ ...prev, classCode: e.target.value }));
+							}}
+						/>
+					</Field.Root>
+					<Field.Root>
+						<Field.Label>Nome do Professor</Field.Label>
+						<Input
+							placeholder="Nome do Professor"
+							value={newClass.professorName || ""}
+							onChange={(e) => {
+								setNewClass((prev) => ({
+									...prev,
+									professorName: e.target.value,
+								}));
+							}}
+						/>
+					</Field.Root>
 				</Grid>
 
 				<ScheduleEditor
@@ -84,30 +98,39 @@ export function AddClassForm({ onAddClass }: AddClassFormProps) {
 				/>
 
 				<Box>
-					<Heading size="sm" mb={3} color="gray.700">
+					<Heading size="sm" mb={3}>
 						Oferta da Turma
 					</Heading>
 
 					<Grid templateColumns={{ base: "1fr", md: "repeat(2, 1fr)" }} gap={4}>
-						<Input
-							placeholder="Código de destino"
-							value={newClass.destCode || ""}
-							onChange={(e) => {
-								setNewClass((prev) => ({ ...prev, destCode: e.target.value }));
-							}}
-						/>
-						<Input
-							type="number"
-							min={0}
-							placeholder="Quantidade de Vagas"
-							value={newClass.vacancyCount || ""}
-							onChange={(e) => {
-								setNewClass((prev) => ({
-									...prev,
-									vacancyCount: parseInt(e.target.value, 10) || 0,
-								}));
-							}}
-						/>
+						<Field.Root>
+							<Field.Label>Código de Destino</Field.Label>
+							<Input
+								placeholder="Código de destino"
+								value={newClass.destCode || ""}
+								onChange={(e) => {
+									setNewClass((prev) => ({
+										...prev,
+										destCode: e.target.value,
+									}));
+								}}
+							/>
+						</Field.Root>
+						<Field.Root>
+							<Field.Label>Quantidade de Vagas</Field.Label>
+							<Input
+								type="number"
+								min={0}
+								placeholder="Quantidade de Vagas"
+								value={newClass.vacancyCount || ""}
+								onChange={(e) => {
+									setNewClass((prev) => ({
+										...prev,
+										vacancyCount: parseInt(e.target.value, 10) || 0,
+									}));
+								}}
+							/>
+						</Field.Root>
 					</Grid>
 				</Box>
 

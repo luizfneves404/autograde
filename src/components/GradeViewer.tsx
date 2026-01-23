@@ -1,4 +1,4 @@
-import { Box, Heading, Table, Text } from "@chakra-ui/react";
+import { Box, Card, Heading, Table, Text } from "@chakra-ui/react";
 import type React from "react";
 import { DAYS } from "@/constants";
 import { useGradeSchedule } from "@/hooks/useGradeSchedule";
@@ -32,26 +32,26 @@ export const GradeViewer: React.FC<GradeViewerProps> = ({
 		const courseClass = scheduleMap.get(key);
 
 		if (!courseClass) {
-			return <Table.Cell key={key} bg="gray.50" />;
+			return <Table.Cell key={key} layerStyle="fill.subtle" />;
 		}
 
 		return (
-			<Table.Cell key={key} textAlign="center" bg="white">
+			<Table.Cell key={key} textAlign="center" bg="bg">
 				<Box>
 					<Text
 						fontWeight="bold"
-						fontSize="xs"
-						color="blue.700"
-						lineHeight="tight"
+						textStyle="2xs"
+						color="blue.fg"
 						wordBreak="break-all"
+						lineHeight="shorter"
 					>
 						{courseClass.courseCode}
 					</Text>
 					<Text
-						fontSize="xs"
-						color="gray.600"
-						lineHeight="tight"
+						textStyle="2xs"
+						color="fg.muted"
 						wordBreak="break-all"
+						lineHeight="shorter"
 					>
 						{courseClass.classCode}
 					</Text>
@@ -61,27 +61,17 @@ export const GradeViewer: React.FC<GradeViewerProps> = ({
 	};
 
 	return (
-		<Box
-			bg="white"
-			p={6}
-			borderRadius="lg"
-			shadow="sm"
-			border="1px solid"
-			borderColor="gray.200"
-		>
-			<Box mb={4}>
-				<Heading size="lg" color="gray.800">
-					Detalhes da Grade
-				</Heading>
-				<Text fontSize="md" color="gray.600">
+		<Card.Root variant="outline">
+			<Card.Header>
+				<Heading size="lg">Detalhes da Grade</Heading>
+				<Text textStyle="md" color="fg.muted">
 					<Text as="span" fontWeight="semibold">
 						Número de créditos:
 					</Text>{" "}
 					{totalCreditos}
 				</Text>
-			</Box>
-
-			<Box overflowX="auto">
+			</Card.Header>
+			<Card.Body>
 				<Table.Root size="sm" variant="outline">
 					<Table.Header>
 						<Table.Row>
@@ -97,11 +87,9 @@ export const GradeViewer: React.FC<GradeViewerProps> = ({
 						{hourSlots.map((hour) => (
 							<Table.Row key={hour}>
 								<Table.Cell
-									p={2}
 									fontWeight="semibold"
 									textAlign="center"
-									color="gray.700"
-									bg="gray.100"
+									layerStyle="fill.muted"
 								>
 									{`${hour.toString()}:00 - ${(hour + 1).toString()}:00`}
 								</Table.Cell>
@@ -110,7 +98,7 @@ export const GradeViewer: React.FC<GradeViewerProps> = ({
 						))}
 					</Table.Body>
 				</Table.Root>
-			</Box>
-		</Box>
+			</Card.Body>
+		</Card.Root>
 	);
 };

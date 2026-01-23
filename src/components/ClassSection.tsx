@@ -55,7 +55,7 @@ export function ClassSection({
 		useState<ClassOfferingIdentifier | null>(null);
 
 	return (
-		<Box mt={6} pl={4} borderLeftWidth="2px" borderColor="gray.200">
+		<Box mt={6} pl={4} layerStyle="indicator.start">
 			<Heading size="md" mb={4}>
 				Turmas de {courseCode}
 			</Heading>
@@ -66,9 +66,9 @@ export function ClassSection({
 				{classes.length === 0 ? (
 					<Box
 						textAlign="center"
-						color="gray.500"
+						color="fg.subtle"
 						p={4}
-						bg="gray.100"
+						layerStyle="fill.muted"
 						borderRadius="md"
 					>
 						Nenhuma turma cadastrada para esta disciplina.
@@ -87,11 +87,11 @@ export function ClassSection({
 							<Box
 								key={currentClassId.classCode}
 								p={4}
-								bg="white"
+								bg="bg"
 								borderRadius="lg"
 								shadow="sm"
 								borderWidth="1px"
-								borderColor="gray.200"
+								borderColor="border.muted"
 							>
 								{isEditingClass ? (
 									<ClassEditor
@@ -123,9 +123,9 @@ export function ClassSection({
 											mt={4}
 											pt={3}
 											borderTopWidth="1px"
-											borderColor="gray.200"
+											borderColor="border.muted"
 										>
-											<Heading size="sm" color="gray.700" mb={2}>
+											<Heading size="sm" mb={2}>
 												Oferta de Vagas
 											</Heading>
 											<VStack gap={2} align="stretch">
@@ -161,15 +161,11 @@ export function ClassSection({
 																	justify="space-between"
 																	align="center"
 																	p={2}
-																	bg="gray.50"
+																	layerStyle="fill.subtle"
 																	borderRadius="md"
 																>
-																	<Text fontSize="sm">
-																		<Text
-																			as="span"
-																			fontWeight="medium"
-																			color="gray.800"
-																		>
+																	<Text textStyle="sm">
+																		<Text as="span" fontWeight="medium">
 																			{offering.destCode}:
 																		</Text>{" "}
 																		{offering.vacancyCount} vagas
@@ -212,7 +208,7 @@ export function ClassSection({
 														10,
 													);
 
-													if (destCode?.trim() && !isNaN(vacancyCount)) {
+													if (destCode?.trim() && !Number.isNaN(vacancyCount)) {
 														onAddOffering(currentClassId, {
 															destCode: destCode.trim().toUpperCase(),
 															vacancyCount,

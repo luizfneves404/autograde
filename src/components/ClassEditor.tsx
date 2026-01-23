@@ -47,12 +47,12 @@ export function ClassEditor({
 	return (
 		<Box
 			p={4}
-			bg="gray.50"
+			layerStyle="fill.subtle"
 			borderRadius="lg"
 			borderWidth="1px"
-			borderColor="blue.200"
+			borderColor="blue.border"
 		>
-			<Heading size="md" mb={4} color="gray.800">
+			<Heading size="md" mb={4}>
 				Editing Class: {courseClass.classCode} ({courseClass.courseCode})
 			</Heading>
 			<VStack gap={4} align="stretch">

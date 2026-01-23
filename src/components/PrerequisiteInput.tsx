@@ -1,5 +1,13 @@
-import { Box, Button, Field, Input, Text } from "@chakra-ui/react";
-import { useEffect, useState } from "react";
+import {
+	Box,
+	Combobox,
+	Field,
+	Portal,
+	Text,
+	useFilter,
+	useListCollection,
+} from "@chakra-ui/react";
+import { useMemo } from "react";
 import type { Course } from "@/types";
 
 interface PrerequisiteInputProps {
@@ -10,6 +18,12 @@ interface PrerequisiteInputProps {
 	placeholder?: string;
 }
 
+type CourseItem = {
+	label: string;
+	value: string;
+	course: Course;
+};
+
 export function PrerequisiteInput({
 	courses,
 	selected,
@@ -17,111 +31,78 @@ export function PrerequisiteInput({
 	label,
 	placeholder,
 }: PrerequisiteInputProps) {
-	const [inputValue, setInputValue] = useState(selected.join(", "));
-	const [suggestions, setSuggestions] = useState<Course[]>([]);
-	const [showSuggestions, setShowSuggestions] = useState(false);
+	const { contains } = useFilter({ sensitivity: "base" });
 
-	useEffect(() => {
-		setInputValue(selected.join(", "));
-	}, [selected]);
+	const items = useMemo<CourseItem[]>(
+		() =>
+			Object.values(courses).map((course) => ({
+				label: `${course.code} - ${course.name}`,
+				value: course.code,
+				course,
+			})),
+		[courses],
+	);
 
-	const handleInputChange = (value: string) => {
-		setInputValue(value);
+	const { collection, filter } = useListCollection<CourseItem>({
+		initialItems: items,
+		filter: (_itemText: string, filterText: string, item: CourseItem) => {
+			const queryLower = filterText.toLowerCase();
+			return (
+				contains(item.course.code, queryLower) ||
+				contains(item.course.name, queryLower)
+			);
+		},
+		itemToString: (item) => item.label,
+		itemToValue: (item) => item.value,
+	});
 
-		const codes = value
-			.split(",")
-			.map((code) => code.trim().toUpperCase())
-			.filter((code) => code.length > 0);
-
-		onChange(codes);
-
-		const lastCode = value.split(",").pop()?.trim() || "";
-		if (lastCode.length > 0) {
-			const filtered = Object.values(courses)
-				.filter(
-					(d) =>
-						d.code.toLowerCase().includes(lastCode.toLowerCase()) ||
-						d.name.toLowerCase().includes(lastCode.toLowerCase()),
-				)
-				.slice(0, 5);
-			setSuggestions(filtered);
-			setShowSuggestions(filtered.length > 0);
-		} else {
-			setShowSuggestions(false);
-		}
+	const handleValueChange = (details: Combobox.ValueChangeDetails) => {
+		onChange(details.value);
 	};
 
-	const addSuggestion = (course: Course) => {
-		const currentCodes = inputValue
-			.split(",")
-			.map((c) => c.trim())
-			.filter((c) => c.length > 0);
-		currentCodes.pop();
-		currentCodes.push(course.code);
-		const newValue = currentCodes.join(", ") + ", ";
-		setInputValue(newValue);
-		onChange(currentCodes);
-		setShowSuggestions(false);
+	const handleInputValueChange = (
+		details: Combobox.InputValueChangeDetails,
+	) => {
+		filter(details.inputValue);
 	};
 
 	return (
-		<Box position="relative">
-			<Field.Root>
-				<Field.Label>{`${label}:`}</Field.Label>
-				<Input
-					value={inputValue}
-					onChange={(e) => {
-						handleInputChange(e.target.value);
-					}}
-					placeholder={placeholder}
-					onFocus={() => {
-						handleInputChange(inputValue);
-					}}
-					onBlur={() =>
-						setTimeout(() => {
-							setShowSuggestions(false);
-						}, 200)
-					}
-				/>
-			</Field.Root>
-
-			{showSuggestions && suggestions.length > 0 && (
-				<Box
-					position="absolute"
-					top="full"
-					left={0}
-					right={0}
-					bg="white"
-					borderWidth="1px"
-					borderColor="gray.300"
-					borderBottomRadius="md"
-					shadow="lg"
-					maxH="60"
-					overflowY="auto"
-					zIndex={10}
-				>
-					{suggestions.map((course) => (
-						<Button
-							key={course.code}
-							onClick={() => {
-								addSuggestion(course);
-							}}
-							w="full"
-							variant="ghost"
-							justifyContent="flex-start"
-							textAlign="left"
-						>
-							<Text as="span" fontWeight="bold">
-								{course.code}
-							</Text>{" "}
-							- {course.name}
-						</Button>
-					))}
-				</Box>
-			)}
-
+		<Field.Root>
+			<Field.Label>{`${label}:`}</Field.Label>
+			<Combobox.Root
+				collection={collection}
+				value={selected}
+				onValueChange={handleValueChange}
+				onInputValueChange={handleInputValueChange}
+				multiple
+				closeOnSelect
+			>
+				<Combobox.Control>
+					<Combobox.Input placeholder={placeholder} />
+					<Combobox.IndicatorGroup>
+						<Combobox.ClearTrigger />
+						<Combobox.Trigger />
+					</Combobox.IndicatorGroup>
+				</Combobox.Control>
+				<Portal>
+					<Combobox.Positioner>
+						<Combobox.Content>
+							<Combobox.Empty>Nenhum resultado encontrado.</Combobox.Empty>
+							{collection.items.map((item) => (
+								<Combobox.Item item={item} key={item.value}>
+									<Text as="span" fontWeight="bold">
+										{item.course.code}
+									</Text>{" "}
+									- {item.course.name}
+									<Combobox.ItemIndicator />
+								</Combobox.Item>
+							))}
+						</Combobox.Content>
+					</Combobox.Positioner>
+				</Portal>
+			</Combobox.Root>
 			{selected.length > 0 && (
-				<Box mt={2} fontSize="sm" color="gray.600">
+				<Box mt={2} textStyle="sm" color="fg.muted">
 					<Text as="span" fontWeight="semibold">
 						Selecionado:
 					</Text>{" "}
@@ -135,6 +116,6 @@ export function PrerequisiteInput({
 						.join(", ")}
 				</Box>
 			)}
-		</Box>
+		</Field.Root>
 	);
 }

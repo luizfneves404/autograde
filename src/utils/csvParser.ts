@@ -157,7 +157,12 @@ export const parseScheduleFromCSV = (horarioSala: string): Schedule => {
 			const endHour = parseInt(endStr, 10);
 
 			const day = dayMap[dayAbbr];
-			if (day && !isNaN(startHour) && !isNaN(endHour) && startHour < endHour) {
+			if (
+				day &&
+				!Number.isNaN(startHour) &&
+				!Number.isNaN(endHour) &&
+				startHour < endHour
+			) {
 				schedule.push({ day, slot: { startHour, endHour } });
 			} else {
 				throw new Error("Invalid schedule string");

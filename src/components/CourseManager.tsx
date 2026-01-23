@@ -1,16 +1,21 @@
 import {
 	Box,
 	Button,
+	ButtonGroup,
 	Card,
+	FileUpload,
 	Flex,
 	Heading,
+	IconButton,
 	Input,
+	Pagination,
+	Span,
 	Text,
 	VStack,
 } from "@chakra-ui/react";
-import Pagination from "@components/Pagination";
 import { PrerequisiteInput } from "@components/PrerequisiteInput";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { HiChevronLeft, HiChevronRight, HiUpload } from "react-icons/hi";
 import { ClassSection } from "@/components/ClassSection";
 import { CourseActions } from "@/components/CourseActions";
 import { CourseEditor } from "@/components/CourseEditor";
@@ -44,7 +49,7 @@ export function CourseManager({
 		new Set(),
 	);
 	const [searchQuery, setSearchQuery] = useState("");
-	const [currentPage, setCurrentPage] = useState(1);
+	const [page, setPage] = useState(1);
 
 	const courseList = useMemo(() => Object.values(courses), [courses]);
 
@@ -57,11 +62,18 @@ export function CourseManager({
 		);
 	}, [courseList, searchQuery]);
 
-	const totalPages = Math.ceil(filteredCourses.length / ITEMS_PER_PAGE);
-	const paginatedCourses = useMemo(() => {
-		const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-		return filteredCourses.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-	}, [filteredCourses, currentPage]);
+	const maxPage = Math.max(
+		1,
+		Math.ceil(filteredCourses.length / ITEMS_PER_PAGE),
+	);
+
+	useEffect(() => {
+		setPage((prev) => Math.min(prev, maxPage));
+	}, [maxPage]);
+
+	const startRange = (page - 1) * ITEMS_PER_PAGE;
+	const endRange = startRange + ITEMS_PER_PAGE;
+	const visibleCourses = filteredCourses.slice(startRange, endRange);
 
 	const toggleExpanded = (courseCode: string) => {
 		setExpandedCourses((prev) => {
@@ -258,46 +270,44 @@ export function CourseManager({
 	};
 
 	return (
-		<Box p={{ base: 4, sm: 6 }} bg="gray.50" minH="100vh">
-			<VStack gap={6} align="stretch">
-				{/* Header and Actions */}
-				<Flex wrap="wrap" align="center" gap={4}>
-					<Heading size="xl" flex={1}>
-						Gerenciamento de Disciplinas
-					</Heading>
-					<Button as="label" colorPalette="blue" cursor="pointer">
-						Import PUC-Rio CSV
-						<Input
-							type="file"
-							accept=".csv"
-							onChange={importCSV}
-							display="none"
-						/>
-					</Button>
-					<Input
-						type="text"
-						placeholder="Pesquisar disciplinas..."
-						value={searchQuery}
-						onChange={(e) => {
-							setSearchQuery(e.target.value);
-							setCurrentPage(1);
-						}}
-						w={{ base: "full", md: "72" }}
-					/>
+		<VStack gap={6} align="stretch">
+			{/* Header and Actions */}
+			<Flex align="center">
+				<Heading size="xl" flex={1}>
+					Gerenciamento de Disciplinas
+				</Heading>
+				<Flex gap={4}>
+					<FileUpload.Root accept={["text/csv", ".csv"]} maxFiles={1}>
+						<FileUpload.HiddenInput onChange={importCSV} />
+						<FileUpload.Trigger asChild>
+							<Button variant="outline">
+								<HiUpload /> Importar CSV da PUC-Rio
+							</Button>
+						</FileUpload.Trigger>
+					</FileUpload.Root>
 				</Flex>
+				<Input
+					type="text"
+					placeholder="Pesquisar disciplinas..."
+					value={searchQuery}
+					onChange={(e) => {
+						const nextQuery = e.target.value;
+						setSearchQuery(nextQuery);
+						setPage(1);
+					}}
+					w={{ md: "72" }}
+				/>
+			</Flex>
 
-				{/* Add New Course Form */}
-				<Box
-					bg="white"
-					p={6}
-					borderRadius="lg"
-					shadow="sm"
-					border="1px solid"
-					borderColor="gray.200"
-				>
-					<Heading size="md" mb={4}>
-						Adicionar Nova Disciplina
-					</Heading>
+			{/* Add New Course Form */}
+			<Card.Root variant="outline">
+				<Card.Header>
+					<Card.Title>Adicionar Nova Disciplina</Card.Title>
+					<Card.Description>
+						Adicione uma disciplina que não se encontra no CSV da PUC-Rio
+					</Card.Description>
+				</Card.Header>
+				<Card.Body>
 					<VStack gap={6} align="stretch">
 						<Flex direction={{ base: "column", md: "row" }} gap={4}>
 							<Input
@@ -334,89 +344,122 @@ export function CourseManager({
 							Adicionar Disciplina
 						</Button>
 					</VStack>
-				</Box>
+				</Card.Body>
+			</Card.Root>
 
-				{/* Courses List */}
-				<VStack gap={4} align="stretch">
-					{paginatedCourses.map((course) => (
-						<Card.Root key={course.code} overflow="hidden">
-							<Box
-								p={4}
-								cursor="pointer"
-								_hover={{ bg: "gray.50" }}
-								onClick={() => {
-									toggleExpanded(course.code);
-								}}
-							>
-								<Flex justify="space-between" align="center">
-									<Box>
-										<Heading size="md" color="gray.800">
-											{course.code} - {course.name}
-										</Heading>
-										<Text fontSize="sm" color="gray.600">
-											{course.classes.length} turmas
-										</Text>
-									</Box>
-									<CourseActions
-										onEdit={() => {
-											setEditingCourse(course.code);
-										}}
-										onDelete={() => {
-											deleteCourse(course.code);
-										}}
-									/>
-								</Flex>
-							</Box>
+			{/* Quando eu clico em um dos courses, ele chama setExpandedCourses, 
+			o que trigger um re render de todo o CourseManager. Preciso mudar isso pra usar um componente 
+			do chakra de forma que não afete o estado do CourseManager, afetando somente o pequeno card do course,
+			 que deve abrir e fechar sem impactar nada de fora dele. */}
 
-							{expandedCourses.has(course.code) && (
-								<Box
-									bg="gray.50"
-									p={6}
-									borderTopWidth="1px"
-									borderColor="gray.200"
-								>
-									{editingCourse === course.code ? (
-										<CourseEditor
-											course={course}
-											onSave={(updated) => {
-												updateCourse(course.code, updated);
-											}}
-											onCancel={() => {
-												setEditingCourse(null);
-											}}
-											courses={courses}
-										/>
-									) : (
-										<CourseView course={course} allCourses={courses} />
-									)}
-
-									<ClassSection
-										courseCode={course.code}
-										classes={course.classes}
-										editingClassId={editingClass}
-										onAddClass={(newClassData) => {
-											addClass(course.code, newClassData);
-										}}
-										onUpdateClass={updateClass}
-										onDeleteClass={deleteClass}
-										onSetEditingClass={setEditingClass}
-										onAddOffering={addOffering}
-										onUpdateOffering={updateOffering}
-										onDeleteOffering={deleteOffering}
-									/>
+			<VStack gap={4} align="stretch">
+				{visibleCourses.map((course) => (
+					<Card.Root key={course.code} overflow="hidden">
+						<Box
+							p={4}
+							cursor="pointer"
+							_hover={{ bg: "gray.50" }}
+							onClick={() => {
+								toggleExpanded(course.code);
+							}}
+						>
+							<Flex justify="space-between" align="center">
+								<Box>
+									<Heading size="md">
+										{course.code} - {course.name}
+									</Heading>
+									<Text textStyle="sm" color="fg.muted">
+										{course.classes.length} turmas
+									</Text>
 								</Box>
-							)}
-						</Card.Root>
-					))}
-				</VStack>
+								<CourseActions
+									onEdit={() => {
+										setEditingCourse(course.code);
+									}}
+									onDelete={() => {
+										deleteCourse(course.code);
+									}}
+								/>
+							</Flex>
+						</Box>
 
-				{/* Pagination */}
-				<Pagination
-					currentPage={currentPage}
-					totalPages={totalPages}
-					onPageChange={setCurrentPage}
-				/>
+						{expandedCourses.has(course.code) && (
+							<Box
+								layerStyle="fill.subtle"
+								p={6}
+								borderTopWidth="1px"
+								borderColor="border.muted"
+							>
+								{editingCourse === course.code ? (
+									<CourseEditor
+										course={course}
+										onSave={(updated) => {
+											updateCourse(course.code, updated);
+										}}
+										onCancel={() => {
+											setEditingCourse(null);
+										}}
+										courses={courses}
+									/>
+								) : (
+									<CourseView course={course} allCourses={courses} />
+								)}
+
+								<ClassSection
+									courseCode={course.code}
+									classes={course.classes}
+									editingClassId={editingClass}
+									onAddClass={(newClassData) => {
+										addClass(course.code, newClassData);
+									}}
+									onUpdateClass={updateClass}
+									onDeleteClass={deleteClass}
+									onSetEditingClass={setEditingClass}
+									onAddOffering={addOffering}
+									onUpdateOffering={updateOffering}
+									onDeleteOffering={deleteOffering}
+								/>
+							</Box>
+						)}
+					</Card.Root>
+				))}
 			</VStack>
-		</Box>
+
+			{filteredCourses.length > ITEMS_PER_PAGE && (
+				<Flex justify="center" mt={6}>
+					<Pagination.Root
+						count={filteredCourses.length}
+						pageSize={ITEMS_PER_PAGE}
+						page={page}
+						onPageChange={(e) => {
+							setPage(e.page);
+						}}
+						siblingCount={1}
+					>
+						<ButtonGroup variant="ghost" size="sm">
+							<Pagination.PrevTrigger asChild>
+								<IconButton aria-label="Página anterior">
+									<HiChevronLeft />
+								</IconButton>
+							</Pagination.PrevTrigger>
+
+							<Pagination.Items
+								render={(page) => (
+									<IconButton variant={{ base: "ghost", _selected: "outline" }}>
+										{page.value}
+									</IconButton>
+								)}
+							/>
+
+							<Pagination.NextTrigger asChild>
+								<IconButton aria-label="Próxima página">
+									<HiChevronRight />
+								</IconButton>
+							</Pagination.NextTrigger>
+						</ButtonGroup>
+					</Pagination.Root>
+				</Flex>
+			)}
+		</VStack>
 	);
 }

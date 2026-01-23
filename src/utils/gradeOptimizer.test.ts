@@ -238,3 +238,9 @@
 //     });
 //   });
 // });
+
+import { describe, it } from "vitest";
+
+describe("gradeOptimizer", () => {
+	it.todo("has behavior tests");
+});

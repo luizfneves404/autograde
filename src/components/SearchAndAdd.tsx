@@ -1,5 +1,15 @@
-import { Badge, Box, Button, Flex, Input, Text } from "@chakra-ui/react";
-import { useMemo, useState } from "react";
+import {
+	Badge,
+	Box,
+	Button,
+	Combobox,
+	Flex,
+	Portal,
+	Text,
+	useFilter,
+	useListCollection,
+} from "@chakra-ui/react";
+import { useMemo } from "react";
 
 interface SearchAndAddProps {
 	label: string;
@@ -16,99 +26,89 @@ function SearchAndAdd({
 	selectedItems,
 	onSelectionChange,
 }: SearchAndAddProps) {
-	const [query, setQuery] = useState("");
+	const { contains } = useFilter({ sensitivity: "base" });
 
-	const handleAddItem = (item: string) => {
-		if (!selectedItems.includes(item)) {
-			onSelectionChange([...selectedItems, item]);
-		}
-		setQuery("");
+	const items = useMemo(
+		() =>
+			allItems.map((item) => ({
+				label: item,
+				value: item,
+			})),
+		[allItems],
+	);
+
+	const { collection, filter } = useListCollection({
+		initialItems: items,
+		filter: contains,
+		itemToString: (item) => item.label,
+		itemToValue: (item) => item.value,
+	});
+
+	const handleValueChange = (details: Combobox.ValueChangeDetails) => {
+		onSelectionChange(details.value);
 	};
 
-	const handleRemoveItem = (itemToRemove: string) => {
-		onSelectionChange(selectedItems.filter((item) => item !== itemToRemove));
+	const handleInputValueChange = (
+		details: Combobox.InputValueChangeDetails,
+	) => {
+		filter(details.inputValue);
 	};
-
-	const filteredItems = useMemo(() => {
-		if (!query) return [];
-		return allItems
-			.filter((item) => item.toLowerCase().includes(query.toLowerCase()))
-			.filter((item) => !selectedItems.includes(item))
-			.slice(0, 7);
-	}, [query, allItems, selectedItems]);
 
 	return (
 		<Box>
-			<Text fontSize="sm" fontWeight="medium" mb={2}>
+			<Text textStyle="sm" fontWeight="medium" mb={2}>
 				{label}
 			</Text>
-			<Flex wrap="wrap" gap={2} mb={2} minH="8">
-				{selectedItems.map((item) => (
-					<Badge key={item} size="lg" colorPalette="blue">
-						{item}
-						<Button
-							type="button"
-							onClick={() => {
-								handleRemoveItem(item);
-							}}
-							size="xs"
-							variant="ghost"
-							ml={1}
-						>
-							✕
-						</Button>
-					</Badge>
-				))}
-			</Flex>
+			{selectedItems.length > 0 && (
+				<Flex wrap="wrap" gap={2} mb={2} minH="8">
+					{selectedItems.map((item) => (
+						<Badge key={item} size="lg" colorPalette="blue">
+							{item}
+							<Button
+								type="button"
+								onClick={() => {
+									onSelectionChange(selectedItems.filter((i) => i !== item));
+								}}
+								size="xs"
+								variant="ghost"
+								ml={1}
+							>
+								✕
+							</Button>
+						</Badge>
+					))}
+				</Flex>
+			)}
 
-			<Box position="relative">
-				<Input
-					type="text"
-					placeholder={placeholder}
-					value={query}
-					onChange={(e) => {
-						setQuery(e.target.value);
-					}}
-				/>
-				{query && (
-					<Box
-						position="absolute"
-						zIndex={10}
-						w="full"
-						bg="white"
-						borderWidth="1px"
-						borderRadius="md"
-						mt={1}
-						shadow="lg"
-						maxH="60"
-						overflowY="auto"
-					>
-						{filteredItems.length > 0 ? (
-							filteredItems.map((item) => (
-								<Box key={item}>
-									<Button
-										type="button"
-										onClick={() => {
-											handleAddItem(item);
-										}}
-										w="full"
-										textAlign="left"
-										p={2}
-										variant="ghost"
-										justifyContent="flex-start"
-									>
-										{item}
-									</Button>
-								</Box>
-							))
-						) : (
-							<Box p={2} fontSize="sm" color="gray.500">
-								Nenhum resultado encontrado.
-							</Box>
-						)}
-					</Box>
-				)}
-			</Box>
+			<Combobox.Root
+				collection={collection}
+				value={[...selectedItems]}
+				onValueChange={handleValueChange}
+				onInputValueChange={handleInputValueChange}
+				multiple
+				closeOnSelect
+			>
+				<Combobox.Control>
+					<Combobox.Input placeholder={placeholder} />
+					<Combobox.IndicatorGroup>
+						<Combobox.ClearTrigger />
+						<Combobox.Trigger />
+					</Combobox.IndicatorGroup>
+				</Combobox.Control>
+				<Portal>
+					<Combobox.Positioner>
+						<Combobox.Content>
+							<Combobox.Empty>Nenhum resultado encontrado.</Combobox.Empty>
+							{collection.items.map((item) => (
+								<Combobox.Item item={item} key={item.value}>
+									{item.label}
+									<Combobox.ItemIndicator />
+								</Combobox.Item>
+							))}
+						</Combobox.Content>
+					</Combobox.Positioner>
+				</Portal>
+			</Combobox.Root>
 		</Box>
 	);
 }

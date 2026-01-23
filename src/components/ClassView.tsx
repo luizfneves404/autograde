@@ -10,12 +10,10 @@ export function ClassView({ courseClass }: ClassViewProps) {
 	return (
 		<Box>
 			<Box mb={2}>
-				<Text fontWeight="semibold" color="gray.800">
-					{courseClass.classCode}
-				</Text>
+				<Text fontWeight="semibold">{courseClass.classCode}</Text>
 			</Box>
 
-			<VStack gap={1} align="stretch" fontSize="sm" color="gray.600">
+			<VStack gap={1} align="stretch" textStyle="sm" color="fg.muted">
 				<Text>
 					<Text as="span" fontWeight="semibold">
 						Professor:

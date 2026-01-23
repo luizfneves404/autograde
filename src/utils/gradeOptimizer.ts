@@ -154,7 +154,7 @@ export function enrichClass(
 		...courseClass,
 		numCredits: course.numCredits,
 		shouldHavePreRequisites: course.shouldHavePreRequisites,
-		coRequisites: course.coRequisites,
+		coRequisites: course.coRequisites || [],
 	};
 }
 

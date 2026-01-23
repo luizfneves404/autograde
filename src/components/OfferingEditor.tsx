@@ -21,16 +21,14 @@ function OfferingEditor({ offering, onSave, onCancel }: OfferingEditorProps) {
 			as="form"
 			onSubmit={handleSubmit}
 			p={2}
-			bg="blue.50"
+			layerStyle="fill.subtle"
 			borderWidth="1px"
-			borderColor="blue.200"
+			borderColor="blue.border"
 			borderRadius="lg"
 		>
 			<Flex justify="space-between" align="center">
 				<Flex gap={3} align="center">
-					<Text fontWeight="bold" color="blue.800">
-						{offering.destCode}:
-					</Text>
+					<Text fontWeight="bold">{offering.destCode}:</Text>
 					<Input
 						type="number"
 						value={vacancies}
@@ -41,9 +39,7 @@ function OfferingEditor({ offering, onSave, onCancel }: OfferingEditorProps) {
 						textAlign="center"
 						autoFocus
 					/>
-					<Text fontSize="sm" color="blue.700">
-						vagas
-					</Text>
+					<Text textStyle="sm">vagas</Text>
 				</Flex>
 
 				<Flex gap={2}>

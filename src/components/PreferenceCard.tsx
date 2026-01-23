@@ -1,13 +1,17 @@
 import {
-	Box,
+	Alert,
+	Badge,
 	Button,
-	Flex,
+	Card,
+	Collapsible,
 	Heading,
+	HStack,
 	Input,
+	Stack,
+	Switch,
 	Textarea,
-	VStack,
 } from "@chakra-ui/react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { UIConstraint } from "@/types";
 import { isExprNode } from "@/utils/isExprNode";
 
@@ -17,148 +21,164 @@ interface PreferenceCardProps {
 	onUpdate: (updates: Partial<UIConstraint>) => void;
 }
 
+// ✅ FIX: Move helper function OUTSIDE the component.
+// It is now stable and won't trigger re-renders or lint errors.
+const safeParse = (str: string) => {
+	try {
+		return JSON.parse(str);
+	} catch {
+		return null;
+	}
+};
+
 function PreferenceCard({
 	constraint,
 	onRemove,
 	onUpdate,
 }: PreferenceCardProps) {
-	const [isAdvancedViewOpen, setAdvancedViewOpen] = useState(false);
+	// 1. LOCAL STATE BUFFER
+	const [localName, setLocalName] = useState(constraint.name);
+	const [localDesc, setLocalDesc] = useState(constraint.description);
 
+	// JSON State
 	const [jsonString, setJsonString] = useState(
 		JSON.stringify(constraint.expression, null, 2),
 	);
 	const [isJsonValid, setIsJsonValid] = useState(true);
 
+	// 2. SYNC FROM PROPS
 	useEffect(() => {
-		setJsonString(JSON.stringify(constraint.expression, null, 2));
-		setIsJsonValid(true);
-	}, [constraint.expression]);
+		setLocalName(constraint.name);
+	}, [constraint.name]);
+
+	useEffect(() => {
+		setLocalDesc(constraint.description);
+	}, [constraint.description]);
+
+	// Ref pattern for JSON
+	const jsonStringRef = useRef(jsonString);
+	jsonStringRef.current = jsonString;
+
+	useEffect(() => {
+		// safeParse is now external and stable, so the linter is happy.
+		const currentParsed = safeParse(jsonStringRef.current);
+
+		if (
+			JSON.stringify(currentParsed) !== JSON.stringify(constraint.expression)
+		) {
+			setJsonString(JSON.stringify(constraint.expression, null, 2));
+		}
+	}, [constraint.expression]); // Clean dependency array
+
+	// 3. HANDLERS
+	const debounceTimer = useRef<NodeJS.Timeout | null>(null);
 
 	const handleJsonChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
 		const newJsonString = e.target.value;
 		setJsonString(newJsonString);
 
-		try {
-			const parsedJson: unknown = JSON.parse(newJsonString);
+		if (debounceTimer.current) clearTimeout(debounceTimer.current);
 
-			if (isExprNode(parsedJson)) {
+		// Validate immediately
+		const parsedJson = safeParse(newJsonString); // We can use the helper here too
+
+		if (parsedJson && isExprNode(parsedJson)) {
+			setIsJsonValid(true);
+			// Only sync to parent after 600ms of inactivity
+			debounceTimer.current = setTimeout(() => {
 				onUpdate({ expression: parsedJson });
-				setIsJsonValid(true);
-			} else {
-				setIsJsonValid(false);
-			}
-		} catch (_) {
+			}, 600);
+		} else {
 			setIsJsonValid(false);
 		}
 	};
 
 	return (
-		<Box
-			bg="white"
-			p={4}
-			borderRadius="lg"
-			shadow="sm"
-			borderWidth="1px"
-			borderLeftWidth="4px"
-			borderColor="gray.200"
-			borderLeftColor={constraint.enabled ? "green.500" : "gray.300"}
-			opacity={constraint.enabled ? 1 : 0.6}
-		>
-			<Flex
-				direction={{ base: "column", lg: "row" }}
-				justify="space-between"
-				align="flex-start"
-				gap={4}
-			>
-				<VStack flex={1} align="stretch" gap={2} mb={2}>
-					<Input
-						value={constraint.name}
-						onChange={(e) => {
-							onUpdate({ name: e.target.value });
-						}}
-						fontSize="lg"
-						fontWeight="semibold"
-						color="gray.800"
-						bg="transparent"
-						borderBottomWidth="1px"
-						borderColor="transparent"
-						_focus={{ borderColor: "blue.500" }}
-						placeholder="Nome da Preferência"
-						variant="outline"
-					/>
-					<Textarea
-						value={constraint.description}
-						onChange={(e) => {
-							onUpdate({ description: e.target.value });
-						}}
-						fontSize="sm"
-						color="gray.700"
-						bg="transparent"
-						borderBottomWidth="1px"
-						borderColor="transparent"
-						_focus={{ borderColor: "blue.500" }}
-						placeholder="Descrição"
-						rows={2}
-						resize="none"
-						variant="outline"
-					/>
-					<Button
-						onClick={() => {
-							setAdvancedViewOpen((prev) => !prev);
-						}}
-						size="sm"
-						colorPalette={isAdvancedViewOpen ? "blue" : "gray"}
-						alignSelf="flex-start"
-					>
-						{isAdvancedViewOpen ? "Ocultar Detalhes" : "Ver Detalhes"}
-					</Button>
-				</VStack>
-				<Flex direction={{ base: "row", sm: "row" }} gap={3}>
-					<Button
-						onClick={() => {
-							onUpdate({ enabled: !constraint.enabled });
-						}}
-						size="sm"
-						w="24"
-						colorPalette={constraint.enabled ? "green" : "gray"}
-					>
-						{constraint.enabled ? "Ativo" : "Inativo"}
-					</Button>
-					<Button onClick={onRemove} size="sm" colorPalette="red">
-						Remover
-					</Button>
-				</Flex>
-			</Flex>
+		<Card.Root variant="outline">
+			<Card.Body>
+				<Stack gap={4}>
+					<HStack justify="space-between" align="flex-start">
+						<Badge colorPalette={constraint.enabled ? "green" : "gray"}>
+							{constraint.enabled ? "Ativo" : "Inativo"}
+						</Badge>
+						<HStack gap={3}>
+							<Switch.Root
+								checked={constraint.enabled}
+								onCheckedChange={(e) => {
+									onUpdate({ enabled: e.checked });
+								}}
+							>
+								<Switch.HiddenInput />
+								<Switch.Control />
+								<Switch.Label>Ativo</Switch.Label>
+							</Switch.Root>
+							<Button
+								onClick={onRemove}
+								size="sm"
+								colorPalette="red"
+								variant="subtle"
+							>
+								Remover
+							</Button>
+						</HStack>
+					</HStack>
 
-			{isAdvancedViewOpen && (
-				<Box mt={4} p={3} bg="gray.100" borderRadius="md">
-					<Heading size="xs" color="gray.700" mb={2}>
-						Expressão da Restrição (JSON)
-					</Heading>
-					<Textarea
-						value={jsonString}
-						onChange={handleJsonChange}
-						fontFamily="mono"
-						fontSize="xs"
-						bg="gray.800"
-						color="gray.200"
-						borderRadius="lg"
-						rows={10}
-						spellCheck={false}
-						borderWidth={isJsonValid ? "1px" : "2px"}
-						borderColor={isJsonValid ? "gray.600" : "red.500"}
-						_focus={{
-							borderColor: isJsonValid ? "blue.500" : "red.500",
-						}}
-					/>
-					{!isJsonValid && (
-						<Box fontSize="xs" color="red.500" mt={1}>
-							A sintaxe do JSON é inválida.
-						</Box>
-					)}
-				</Box>
-			)}
-		</Box>
+					<Stack gap={3}>
+						<Input
+							value={localName}
+							onChange={(e) => setLocalName(e.target.value)}
+							onBlur={() => {
+								if (localName !== constraint.name) {
+									onUpdate({ name: localName });
+								}
+							}}
+							placeholder="Nome da Preferência"
+						/>
+						<Textarea
+							value={localDesc}
+							onChange={(e) => setLocalDesc(e.target.value)}
+							onBlur={() => {
+								if (localDesc !== constraint.description) {
+									onUpdate({ description: localDesc });
+								}
+							}}
+							placeholder="Descrição"
+							rows={2}
+							resize="none"
+						/>
+					</Stack>
+
+					<Collapsible.Root>
+						<Collapsible.Trigger asChild alignSelf="flex-start">
+							<Button size="sm" variant="outline">
+								<Collapsible.Context>
+									{(api) => (api.open ? "Ocultar Detalhes" : "Ver Detalhes")}
+								</Collapsible.Context>
+							</Button>
+						</Collapsible.Trigger>
+						<Collapsible.Content>
+							<Stack mt={3} gap={2}>
+								<Heading size="xs">Expressão da Restrição (JSON)</Heading>
+								<Textarea
+									value={jsonString}
+									onChange={handleJsonChange}
+									fontFamily="mono"
+									textStyle="xs"
+									rows={10}
+									spellCheck={false}
+								/>
+								{!isJsonValid && (
+									<Alert.Root status="error" variant="outline" size="sm">
+										<Alert.Indicator />
+										<Alert.Title>A sintaxe do JSON é inválida.</Alert.Title>
+									</Alert.Root>
+								)}
+							</Stack>
+						</Collapsible.Content>
+					</Collapsible.Root>
+				</Stack>
+			</Card.Body>
+		</Card.Root>
 	);
 }
 
