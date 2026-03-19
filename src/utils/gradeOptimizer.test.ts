@@ -1,11 +1,53 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import type { Course, CourseClass } from "@/types";
+import { parseCSVData } from "./csvParser";
 import {
+	availableCourses,
 	evaluateClassAvailability,
 	evaluateManualGrade,
 	generateOptimizedGrades,
 	minCreditLoad,
 } from "./gradeOptimizer";
+
+const targetCourses = [
+	"INF1721",
+	"INF1027",
+	"INF1041",
+	"ENG4011",
+	"INF1407",
+	"ENG4451",
+	"INF1643",
+	"ENG4421",
+] as const;
+
+const targetCourseSet = new Set<string>(targetCourses);
+
+const officialCsvPath = path.resolve(
+	path.dirname(fileURLToPath(import.meta.url)),
+	"../assets/HORARIO_DAS_DISCIPLINAS_18032026.csv",
+);
+
+const officialCourses = parseCSVData(readFileSync(officialCsvPath));
+
+const constrainedPreferences = [
+	availableCourses([...targetCourses]),
+	minCreditLoad(26),
+];
+
+const expectedOverrideCourseSignatures = [
+	"ENG4011,ENG4421,ENG4451,INF1027,INF1041,INF1407,INF1643",
+	"ENG4011,ENG4421,ENG4451,INF1027,INF1041,INF1407,INF1643,INF1721",
+	"ENG4011,ENG4421,ENG4451,INF1027,INF1041,INF1407,INF1721",
+	"ENG4011,ENG4421,ENG4451,INF1027,INF1041,INF1643,INF1721",
+	"ENG4011,ENG4421,ENG4451,INF1027,INF1407,INF1643,INF1721",
+	"ENG4011,ENG4421,ENG4451,INF1041,INF1407,INF1643,INF1721",
+	"ENG4011,ENG4421,INF1027,INF1041,INF1407,INF1643,INF1721",
+	"ENG4011,ENG4451,INF1027,INF1041,INF1407,INF1643,INF1721",
+	"ENG4421,ENG4451,INF1027,INF1041,INF1407,INF1643,INF1721",
+] as const;
 
 function makeClass(overrides: Partial<CourseClass> = {}): CourseClass {
 	return {
@@ -96,5 +138,66 @@ describe("gradeOptimizer", () => {
 		expect(result.reasons).toContain(
 			"Turma INF1001-3WA nao possui vagas nos codigos de destino selecionados.",
 		);
+	});
+
+	it("cannot reach 26 credits from the official CSV subset when zero-vacancy classes are excluded", () => {
+		const grades = generateOptimizedGrades(
+			officialCourses,
+			constrainedPreferences,
+			["CEG", "QQC"],
+			false,
+		);
+
+		expect(grades).toEqual([]);
+	});
+
+	it("returns all valid 26-credit schedules from the official CSV subset when the vacancy override is enabled", () => {
+		const grades = generateOptimizedGrades(
+			officialCourses,
+			constrainedPreferences,
+			["CEG", "QQC"],
+			true,
+		);
+
+		const courseSignatures = grades.map((grade) =>
+			grade.classes
+				.map((cls) => cls.courseCode)
+				.sort()
+				.join(","),
+		);
+		const classSignatures = grades.map((grade) =>
+			grade.classes
+				.map((cls) => `${cls.courseCode}-${cls.classCode}`)
+				.sort()
+				.join(","),
+		);
+
+		expect(grades).toHaveLength(80);
+		expect([...new Set(courseSignatures)].sort()).toEqual(
+			expectedOverrideCourseSignatures,
+		);
+		expect(new Set(classSignatures)).toHaveLength(grades.length);
+
+		for (const grade of grades) {
+			const courseCodes = grade.classes.map((cls) => cls.courseCode);
+			const totalCredits = grade.classes.reduce(
+				(sum, cls) => sum + (officialCourses[cls.courseCode]?.numCredits ?? 0),
+				0,
+			);
+			const manualCheck = evaluateManualGrade(
+				grade.classes,
+				officialCourses,
+				constrainedPreferences,
+				["CEG", "QQC"],
+				true,
+			);
+
+			expect(courseCodes.every((code) => targetCourseSet.has(code))).toBe(true);
+			expect(new Set(courseCodes)).toHaveLength(courseCodes.length);
+			expect(totalCredits).toBeGreaterThanOrEqual(26);
+			expect(totalCredits).toBeLessThanOrEqual(30);
+			expect(manualCheck.satisfied).toBe(true);
+			expect(manualCheck.reasons).toContain("All AND conditions are satisfied");
+		}
 	});
 });
