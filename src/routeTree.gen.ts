@@ -14,6 +14,8 @@ import { Route as ManualRouteImport } from './routes/manual'
 import { Route as GradesRouteImport } from './routes/grades'
 import { Route as CoursesRouteImport } from './routes/courses'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as CoursesIndexRouteImport } from './routes/courses.index'
+import { Route as CoursesCourseCodeRouteImport } from './routes/courses.$courseCode'
 
 const PreferencesRoute = PreferencesRouteImport.update({
   id: '/preferences',
@@ -40,40 +42,76 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CoursesIndexRoute = CoursesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => CoursesRoute,
+} as any)
+const CoursesCourseCodeRoute = CoursesCourseCodeRouteImport.update({
+  id: '/$courseCode',
+  path: '/$courseCode',
+  getParentRoute: () => CoursesRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/courses': typeof CoursesRoute
+  '/courses': typeof CoursesRouteWithChildren
   '/grades': typeof GradesRoute
   '/manual': typeof ManualRoute
   '/preferences': typeof PreferencesRoute
+  '/courses/$courseCode': typeof CoursesCourseCodeRoute
+  '/courses/': typeof CoursesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/courses': typeof CoursesRoute
   '/grades': typeof GradesRoute
   '/manual': typeof ManualRoute
   '/preferences': typeof PreferencesRoute
+  '/courses/$courseCode': typeof CoursesCourseCodeRoute
+  '/courses': typeof CoursesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/courses': typeof CoursesRoute
+  '/courses': typeof CoursesRouteWithChildren
   '/grades': typeof GradesRoute
   '/manual': typeof ManualRoute
   '/preferences': typeof PreferencesRoute
+  '/courses/$courseCode': typeof CoursesCourseCodeRoute
+  '/courses/': typeof CoursesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/courses' | '/grades' | '/manual' | '/preferences'
+  fullPaths:
+    | '/'
+    | '/courses'
+    | '/grades'
+    | '/manual'
+    | '/preferences'
+    | '/courses/$courseCode'
+    | '/courses/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/courses' | '/grades' | '/manual' | '/preferences'
-  id: '__root__' | '/' | '/courses' | '/grades' | '/manual' | '/preferences'
+  to:
+    | '/'
+    | '/grades'
+    | '/manual'
+    | '/preferences'
+    | '/courses/$courseCode'
+    | '/courses'
+  id:
+    | '__root__'
+    | '/'
+    | '/courses'
+    | '/grades'
+    | '/manual'
+    | '/preferences'
+    | '/courses/$courseCode'
+    | '/courses/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  CoursesRoute: typeof CoursesRoute
+  CoursesRoute: typeof CoursesRouteWithChildren
   GradesRoute: typeof GradesRoute
   ManualRoute: typeof ManualRoute
   PreferencesRoute: typeof PreferencesRoute
@@ -116,12 +154,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/courses/': {
+      id: '/courses/'
+      path: '/'
+      fullPath: '/courses/'
+      preLoaderRoute: typeof CoursesIndexRouteImport
+      parentRoute: typeof CoursesRoute
+    }
+    '/courses/$courseCode': {
+      id: '/courses/$courseCode'
+      path: '/$courseCode'
+      fullPath: '/courses/$courseCode'
+      preLoaderRoute: typeof CoursesCourseCodeRouteImport
+      parentRoute: typeof CoursesRoute
+    }
   }
 }
 
+interface CoursesRouteChildren {
+  CoursesCourseCodeRoute: typeof CoursesCourseCodeRoute
+  CoursesIndexRoute: typeof CoursesIndexRoute
+}
+
+const CoursesRouteChildren: CoursesRouteChildren = {
+  CoursesCourseCodeRoute: CoursesCourseCodeRoute,
+  CoursesIndexRoute: CoursesIndexRoute,
+}
+
+const CoursesRouteWithChildren =
+  CoursesRoute._addFileChildren(CoursesRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  CoursesRoute: CoursesRoute,
+  CoursesRoute: CoursesRouteWithChildren,
   GradesRoute: GradesRoute,
   ManualRoute: ManualRoute,
   PreferencesRoute: PreferencesRoute,

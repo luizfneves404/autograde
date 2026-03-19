@@ -8,6 +8,7 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
+import { FieldGroup, FieldLegend, FieldSet } from "@/components/ui/field";
 import { Separator } from "@/components/ui/separator";
 import { useAppForm } from "@/features/forms/use-app-form";
 import { GradeTable } from "@/features/grades/grade-table";
@@ -117,18 +118,25 @@ export function ManualPage() {
 								void form.handleSubmit();
 							}}
 						>
-							<form.AppField name="selectedClassIds">
-								{(field) => (
-									<field.CheckboxGroupField
-										label="Turmas disponiveis"
-										options={classOptions}
-										emptyMessage="Importe disciplinas antes de montar uma grade."
-									/>
-								)}
-							</form.AppField>
-							<form.AppForm>
-								<form.SubmitButton>Analisar grade manual</form.SubmitButton>
-							</form.AppForm>
+							<FieldSet>
+								<FieldLegend className="sr-only">Selecionar turmas</FieldLegend>
+								<FieldGroup>
+									<form.AppField name="selectedClassIds">
+										{(field) => (
+											<field.CheckboxGroupField
+												label="Turmas disponiveis"
+												placeholder="Selecionar turmas"
+												description="Busque por codigo da turma ou professor."
+												options={classOptions}
+												emptyMessage="Importe disciplinas antes de montar uma grade."
+											/>
+										)}
+									</form.AppField>
+									<form.AppForm>
+										<form.SubmitButton>Analisar grade manual</form.SubmitButton>
+									</form.AppForm>
+								</FieldGroup>
+							</FieldSet>
 						</form>
 					</CardContent>
 				</Card>

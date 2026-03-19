@@ -9,6 +9,7 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
+import { FieldGroup, FieldLegend, FieldSet } from "@/components/ui/field";
 import { Separator } from "@/components/ui/separator";
 import { DAYS } from "@/constants";
 import { useAppForm } from "@/features/forms/use-app-form";
@@ -74,22 +75,28 @@ function DestinationCodesForm({
 				void form.handleSubmit();
 			}}
 		>
-			<form.AppField name="userDestCodes">
-				{(field) => (
-					<field.CheckboxGroupField
-						label="Codigos de destino"
-						description="Selecione os codigos de destino aceitos pelo otimizador."
-						options={availableDestCodes.map((code) => ({
-							label: getDestCodeName(code),
-							value: code,
-							description: code,
-						}))}
-					/>
-				)}
-			</form.AppField>
-			<form.AppForm>
-				<form.SubmitButton>Salvar codigos</form.SubmitButton>
-			</form.AppForm>
+			<FieldSet>
+				<FieldLegend className="sr-only">Codigos de destino</FieldLegend>
+				<FieldGroup>
+					<form.AppField name="userDestCodes">
+						{(field) => (
+							<field.CheckboxGroupField
+								label="Codigos de destino"
+								placeholder="Selecionar codigos"
+								description="Selecione os codigos de destino aceitos pelo otimizador."
+								options={availableDestCodes.map((code) => ({
+									label: getDestCodeName(code),
+									value: code,
+									description: code,
+								}))}
+							/>
+						)}
+					</form.AppField>
+					<form.AppForm>
+						<form.SubmitButton>Salvar codigos</form.SubmitButton>
+					</form.AppForm>
+				</FieldGroup>
+			</FieldSet>
 		</form>
 	);
 }
@@ -138,73 +145,81 @@ function AddConstraintForm({
 				void form.handleSubmit();
 			}}
 		>
-			<form.AppField name="type">
-				{(field) => (
-					<field.SelectField
-						label="Tipo de restricao"
-						placeholder="Selecione uma restricao"
-						options={constraintOptions}
-						onValueChange={(value) =>
-							setSelectedType(value as ConstraintFormValues["type"])
-						}
-					/>
-				)}
-			</form.AppField>
-			{selectedType === "AVAILABLE_COURSES" ||
-			selectedType === "MINIMUM_COURSES" ||
-			selectedType === "FORBID_COURSE_COMBO" ||
-			selectedType === "FORBID_EACH_COURSE" ? (
-				<form.AppField name="courses">
-					{(field) => (
-						<field.CheckboxGroupField
-							label="Disciplinas"
-							options={availableCourseCodes.map((courseCode) => ({
-								label: courseCode,
-								value: courseCode,
-							}))}
-						/>
-					)}
-				</form.AppField>
-			) : null}
-			{selectedType === "ONLY_PROFESSORS" ? (
-				<form.AppField name="professors">
-					{(field) => (
-						<field.CheckboxGroupField
-							label="Professores"
-							options={availableProfessors.map((professor) => ({
-								label: professor,
-								value: professor,
-							}))}
-						/>
-					)}
-				</form.AppField>
-			) : null}
-			{selectedType === "FORBID_DAYS" ? (
-				<form.AppField name="days">
-					{(field) => (
-						<field.CheckboxGroupField
-							label="Dias proibidos"
-							options={DAYS.map((day) => ({
-								label: day,
-								value: day,
-							}))}
-						/>
-					)}
-				</form.AppField>
-			) : null}
-			{selectedType === "MAX_CREDIT_LOAD" ? (
-				<form.AppField name="max">
-					{(field) => <field.NumberField label="Carga maxima" min={1} />}
-				</form.AppField>
-			) : null}
-			{selectedType === "MIN_CREDIT_LOAD" ? (
-				<form.AppField name="min">
-					{(field) => <field.NumberField label="Carga minima" min={1} />}
-				</form.AppField>
-			) : null}
-			<form.AppForm>
-				<form.SubmitButton>Adicionar restricao</form.SubmitButton>
-			</form.AppForm>
+			<FieldSet>
+				<FieldLegend className="sr-only">Nova restricao</FieldLegend>
+				<FieldGroup>
+					<form.AppField name="type">
+						{(field) => (
+							<field.SelectField
+								label="Tipo de restricao"
+								placeholder="Selecione uma restricao"
+								options={constraintOptions}
+								onValueChange={(value) =>
+									setSelectedType(value as ConstraintFormValues["type"])
+								}
+							/>
+						)}
+					</form.AppField>
+					{selectedType === "AVAILABLE_COURSES" ||
+					selectedType === "MINIMUM_COURSES" ||
+					selectedType === "FORBID_COURSE_COMBO" ||
+					selectedType === "FORBID_EACH_COURSE" ? (
+						<form.AppField name="courses">
+							{(field) => (
+								<field.CheckboxGroupField
+									label="Disciplinas"
+									placeholder="Selecionar disciplinas"
+									options={availableCourseCodes.map((courseCode) => ({
+										label: courseCode,
+										value: courseCode,
+									}))}
+								/>
+							)}
+						</form.AppField>
+					) : null}
+					{selectedType === "ONLY_PROFESSORS" ? (
+						<form.AppField name="professors">
+							{(field) => (
+								<field.CheckboxGroupField
+									label="Professores"
+									placeholder="Selecionar professores"
+									options={availableProfessors.map((professor) => ({
+										label: professor,
+										value: professor,
+									}))}
+								/>
+							)}
+						</form.AppField>
+					) : null}
+					{selectedType === "FORBID_DAYS" ? (
+						<form.AppField name="days">
+							{(field) => (
+								<field.CheckboxGroupField
+									label="Dias proibidos"
+									placeholder="Selecionar dias"
+									options={DAYS.map((day) => ({
+										label: day,
+										value: day,
+									}))}
+								/>
+							)}
+						</form.AppField>
+					) : null}
+					{selectedType === "MAX_CREDIT_LOAD" ? (
+						<form.AppField name="max">
+							{(field) => <field.NumberField label="Carga maxima" min={1} />}
+						</form.AppField>
+					) : null}
+					{selectedType === "MIN_CREDIT_LOAD" ? (
+						<form.AppField name="min">
+							{(field) => <field.NumberField label="Carga minima" min={1} />}
+						</form.AppField>
+					) : null}
+					<form.AppForm>
+						<form.SubmitButton>Adicionar restricao</form.SubmitButton>
+					</form.AppForm>
+				</FieldGroup>
+			</FieldSet>
 		</form>
 	);
 }

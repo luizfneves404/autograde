@@ -155,6 +155,7 @@ function RootLayout() {
 					<nav className="flex flex-wrap items-center gap-2 text-sm">
 						<Link
 							to="/courses"
+							search={{ page: 1, query: "" }}
 							className="rounded-md px-3 py-2"
 							activeProps={{
 								className: "bg-primary text-primary-foreground",

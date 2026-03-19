@@ -1,11 +1,32 @@
 import { createFormHook, createFormHookContexts } from "@tanstack/react-form";
-import type { ReactNode } from "react";
-import { Badge } from "@/components/ui/badge";
+import { type ReactNode, useId } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+	Combobox,
+	ComboboxChip,
+	ComboboxChips,
+	ComboboxChipsInput,
+	ComboboxContent,
+	ComboboxEmpty,
+	ComboboxItem,
+	ComboboxList,
+	ComboboxValue,
+} from "@/components/ui/combobox";
+import {
+	Field,
+	FieldDescription,
+	FieldError,
+	FieldLabel,
+} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select } from "@/components/ui/select";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
@@ -18,47 +39,6 @@ type Option = {
 	description?: string;
 };
 
-function FieldShell({
-	label,
-	description,
-	error,
-	children,
-	className,
-}: {
-	label: string;
-	description?: string;
-	error?: string;
-	children: ReactNode;
-	className?: string;
-}) {
-	return (
-		<div className={cn("space-y-2", className)}>
-			<div className="space-y-1">
-				<Label>{label}</Label>
-				{description ? (
-					<p className="text-xs text-muted-foreground">{description}</p>
-				) : null}
-			</div>
-			{children}
-			{error ? <p className="text-sm text-destructive">{error}</p> : null}
-		</div>
-	);
-}
-
-function getFieldError(errors: unknown[]): string | undefined {
-	const firstError = errors[0];
-
-	if (typeof firstError === "string") {
-		return firstError;
-	}
-
-	if (firstError instanceof Error) {
-		return firstError.message;
-	}
-
-	return undefined;
-}
-
 type CommonFieldProps = {
 	label: string;
 	description?: string;
@@ -66,39 +46,101 @@ type CommonFieldProps = {
 	className?: string;
 };
 
+function getFieldState(
+	errors: unknown[],
+	isTouched: boolean,
+	formState: unknown,
+) {
+	const state = formState as {
+		isSubmitted?: boolean;
+		submissionAttempts?: number;
+	};
+	const shouldShowError =
+		errors.length > 0 &&
+		(isTouched ||
+			Boolean(state.isSubmitted) ||
+			(state.submissionAttempts ?? 0) > 0);
+
+	return {
+		isInvalid: shouldShowError,
+		shouldShowError,
+	};
+}
+
+function getDescribedBy(
+	descriptionId: string | undefined,
+	errorId: string | undefined,
+) {
+	return [descriptionId, errorId].filter(Boolean).join(" ") || undefined;
+}
+
 function TextField(props: CommonFieldProps) {
 	const field = useFieldContext<string>();
-	const error = getFieldError(field.state.meta.errors);
+	const fieldId = useId();
+	const descriptionId = props.description
+		? `${fieldId}-description`
+		: undefined;
+	const errorId = `${fieldId}-error`;
+	const { isInvalid, shouldShowError } = getFieldState(
+		field.state.meta.errors,
+		field.state.meta.isTouched,
+		field.form.state,
+	);
 
 	return (
-		<FieldShell
-			label={props.label}
-			description={props.description}
-			error={error}
-			className={props.className}
-		>
+		<Field data-invalid={isInvalid} className={props.className}>
+			<FieldLabel htmlFor={fieldId} data-invalid={isInvalid}>
+				{props.label}
+			</FieldLabel>
+			{props.description ? (
+				<FieldDescription id={descriptionId}>
+					{props.description}
+				</FieldDescription>
+			) : null}
 			<Input
+				id={fieldId}
 				value={field.state.value}
 				onBlur={field.handleBlur}
 				onChange={(event) => field.handleChange(event.target.value)}
 				placeholder={props.placeholder}
+				aria-invalid={isInvalid}
+				aria-describedby={getDescribedBy(
+					descriptionId,
+					shouldShowError ? errorId : undefined,
+				)}
 			/>
-		</FieldShell>
+			{shouldShowError ? (
+				<FieldError id={errorId} errors={field.state.meta.errors} />
+			) : null}
+		</Field>
 	);
 }
 
 function NumberField(props: CommonFieldProps & { min?: number; max?: number }) {
 	const field = useFieldContext<number>();
-	const error = getFieldError(field.state.meta.errors);
+	const fieldId = useId();
+	const descriptionId = props.description
+		? `${fieldId}-description`
+		: undefined;
+	const errorId = `${fieldId}-error`;
+	const { isInvalid, shouldShowError } = getFieldState(
+		field.state.meta.errors,
+		field.state.meta.isTouched,
+		field.form.state,
+	);
 
 	return (
-		<FieldShell
-			label={props.label}
-			description={props.description}
-			error={error}
-			className={props.className}
-		>
+		<Field data-invalid={isInvalid} className={props.className}>
+			<FieldLabel htmlFor={fieldId} data-invalid={isInvalid}>
+				{props.label}
+			</FieldLabel>
+			{props.description ? (
+				<FieldDescription id={descriptionId}>
+					{props.description}
+				</FieldDescription>
+			) : null}
 			<Input
+				id={fieldId}
 				type="number"
 				value={Number.isNaN(field.state.value) ? "" : field.state.value}
 				min={props.min}
@@ -110,53 +152,112 @@ function NumberField(props: CommonFieldProps & { min?: number; max?: number }) {
 					)
 				}
 				placeholder={props.placeholder}
+				aria-invalid={isInvalid}
+				aria-describedby={getDescribedBy(
+					descriptionId,
+					shouldShowError ? errorId : undefined,
+				)}
 			/>
-		</FieldShell>
+			{shouldShowError ? (
+				<FieldError id={errorId} errors={field.state.meta.errors} />
+			) : null}
+		</Field>
 	);
 }
 
 function TextareaField(props: CommonFieldProps & { rows?: number }) {
 	const field = useFieldContext<string>();
-	const error = getFieldError(field.state.meta.errors);
+	const fieldId = useId();
+	const descriptionId = props.description
+		? `${fieldId}-description`
+		: undefined;
+	const errorId = `${fieldId}-error`;
+	const { isInvalid, shouldShowError } = getFieldState(
+		field.state.meta.errors,
+		field.state.meta.isTouched,
+		field.form.state,
+	);
 
 	return (
-		<FieldShell
-			label={props.label}
-			description={props.description}
-			error={error}
-			className={props.className}
-		>
+		<Field data-invalid={isInvalid} className={props.className}>
+			<FieldLabel htmlFor={fieldId} data-invalid={isInvalid}>
+				{props.label}
+			</FieldLabel>
+			{props.description ? (
+				<FieldDescription id={descriptionId}>
+					{props.description}
+				</FieldDescription>
+			) : null}
 			<Textarea
+				id={fieldId}
 				value={field.state.value}
 				onBlur={field.handleBlur}
 				onChange={(event) => field.handleChange(event.target.value)}
 				placeholder={props.placeholder}
 				rows={props.rows}
+				aria-invalid={isInvalid}
+				aria-describedby={getDescribedBy(
+					descriptionId,
+					shouldShowError ? errorId : undefined,
+				)}
 			/>
-		</FieldShell>
+			{shouldShowError ? (
+				<FieldError id={errorId} errors={field.state.meta.errors} />
+			) : null}
+		</Field>
 	);
 }
 
 function CheckboxField(props: CommonFieldProps) {
 	const field = useFieldContext<boolean>();
-	const error = getFieldError(field.state.meta.errors);
+	const fieldId = useId();
+	const descriptionId = props.description
+		? `${fieldId}-description`
+		: undefined;
+	const errorId = `${fieldId}-error`;
+	const { isInvalid, shouldShowError } = getFieldState(
+		field.state.meta.errors,
+		field.state.meta.isTouched,
+		field.form.state,
+	);
 
 	return (
-		<FieldShell
-			label={props.label}
-			description={props.description}
-			error={error}
-			className={props.className}
-		>
-			<div className="flex items-center gap-3 rounded-md border p-3 text-sm">
+		<Field data-invalid={isInvalid} className={props.className}>
+			<div
+				className={cn(
+					"flex items-start gap-3 rounded-md border p-3 text-sm",
+					isInvalid && "border-destructive",
+				)}
+			>
 				<Checkbox
+					id={fieldId}
 					checked={field.state.value}
 					onCheckedChange={(checked) => field.handleChange(Boolean(checked))}
 					onBlur={field.handleBlur}
+					aria-invalid={isInvalid}
+					aria-describedby={getDescribedBy(
+						descriptionId,
+						shouldShowError ? errorId : undefined,
+					)}
 				/>
-				<span>{props.placeholder ?? props.label}</span>
+				<div className="grid gap-1.5">
+					<FieldLabel htmlFor={fieldId} data-invalid={isInvalid}>
+						{props.label}
+					</FieldLabel>
+					{props.placeholder ? (
+						<p className="text-sm text-muted-foreground">{props.placeholder}</p>
+					) : null}
+					{props.description ? (
+						<FieldDescription id={descriptionId}>
+							{props.description}
+						</FieldDescription>
+					) : null}
+				</div>
 			</div>
-		</FieldShell>
+			{shouldShowError ? (
+				<FieldError id={errorId} errors={field.state.meta.errors} />
+			) : null}
+		</Field>
 	);
 }
 
@@ -167,31 +268,61 @@ function SelectField(
 	},
 ) {
 	const field = useFieldContext<string>();
-	const error = getFieldError(field.state.meta.errors);
+	const fieldId = useId();
+	const descriptionId = props.description
+		? `${fieldId}-description`
+		: undefined;
+	const errorId = `${fieldId}-error`;
+	const { isInvalid, shouldShowError } = getFieldState(
+		field.state.meta.errors,
+		field.state.meta.isTouched,
+		field.form.state,
+	);
 
 	return (
-		<FieldShell
-			label={props.label}
-			description={props.description}
-			error={error}
-			className={props.className}
-		>
+		<Field data-invalid={isInvalid} className={props.className}>
+			<FieldLabel htmlFor={fieldId} data-invalid={isInvalid}>
+				{props.label}
+			</FieldLabel>
+			{props.description ? (
+				<FieldDescription id={descriptionId}>
+					{props.description}
+				</FieldDescription>
+			) : null}
 			<Select
-				value={field.state.value}
-				onBlur={field.handleBlur}
-				onChange={(event) => {
-					field.handleChange(event.target.value);
-					props.onValueChange?.(event.target.value);
+				value={field.state.value || ""}
+				onValueChange={(value) => {
+					field.handleChange(value);
+					props.onValueChange?.(value);
+				}}
+				onOpenChange={(open) => {
+					if (!open) field.handleBlur();
 				}}
 			>
-				<option value="">{props.placeholder ?? "Selecione uma opcao"}</option>
-				{props.options.map((option) => (
-					<option key={option.value} value={option.value}>
-						{option.label}
-					</option>
-				))}
+				<SelectTrigger
+					id={fieldId}
+					aria-invalid={isInvalid}
+					aria-describedby={getDescribedBy(
+						descriptionId,
+						shouldShowError ? errorId : undefined,
+					)}
+				>
+					<SelectValue
+						placeholder={props.placeholder ?? "Selecione uma opcao"}
+					/>
+				</SelectTrigger>
+				<SelectContent>
+					{props.options.map((option) => (
+						<SelectItem key={option.value} value={option.value}>
+							{option.label}
+						</SelectItem>
+					))}
+				</SelectContent>
 			</Select>
-		</FieldShell>
+			{shouldShowError ? (
+				<FieldError id={errorId} errors={field.state.meta.errors} />
+			) : null}
+		</Field>
 	);
 }
 
@@ -202,66 +333,67 @@ function CheckboxGroupField(
 	},
 ) {
 	const field = useFieldContext<string[]>();
-	const error = getFieldError(field.state.meta.errors);
-	const selectedValues = new Set(field.state.value);
+	const fieldId = useId();
+	const descriptionId = props.description
+		? `${fieldId}-description`
+		: undefined;
+	const errorId = `${fieldId}-error`;
+	const { isInvalid, shouldShowError } = getFieldState(
+		field.state.meta.errors,
+		field.state.meta.isTouched,
+		field.form.state,
+	);
 
 	return (
-		<FieldShell
-			label={props.label}
-			description={props.description}
-			error={error}
-			className={props.className}
-		>
-			<div className="rounded-md border">
-				{props.options.length === 0 ? (
-					<p className="p-3 text-sm text-muted-foreground">
-						{props.emptyMessage ?? "Nenhuma opcao disponivel."}
-					</p>
-				) : (
-					<div className="max-h-64 space-y-2 overflow-auto p-3">
-						{props.options.map((option) => {
-							const isChecked = selectedValues.has(option.value);
-							return (
-								<div
-									key={option.value}
-									className="flex items-start gap-3 rounded-md border p-3 text-sm"
-								>
-									<Checkbox
-										checked={isChecked}
-										onCheckedChange={(checked) => {
-											const nextValue = checked
-												? [...field.state.value, option.value]
-												: field.state.value.filter(
-														(value) => value !== option.value,
-													);
-											field.handleChange(nextValue);
-										}}
-										onBlur={field.handleBlur}
-									/>
-									<span className="space-y-1">
-										<span className="block font-medium">{option.label}</span>
-										{option.description ? (
-											<span className="block text-xs text-muted-foreground">
-												{option.description}
-											</span>
-										) : null}
-									</span>
-								</div>
-							);
-						})}
-					</div>
-				)}
-			</div>
-			{field.state.value.length > 0 ? (
-				<div className="flex flex-wrap gap-2">
-					{field.state.value.map((item) => (
-						<Badge key={item} variant="secondary">
-							{item}
-						</Badge>
-					))}
-				</div>
+		<Field data-invalid={isInvalid} className={props.className}>
+			<FieldLabel htmlFor={fieldId} data-invalid={isInvalid}>
+				{props.label}
+			</FieldLabel>
+			{props.description ? (
+				<FieldDescription id={descriptionId}>
+					{props.description}
+				</FieldDescription>
 			) : null}
-		</FieldShell>
+			<Combobox
+				multiple
+				value={field.state.value}
+				onValueChange={(value) =>
+					field.handleChange(value === null ? [] : value)
+				}
+			>
+				<ComboboxChips
+					aria-invalid={isInvalid}
+					aria-describedby={getDescribedBy(
+						descriptionId,
+						shouldShowError ? errorId : undefined,
+					)}
+					onBlur={field.handleBlur}
+				>
+					<ComboboxChip>
+						<ComboboxValue />
+					</ComboboxChip>
+					<ComboboxChipsInput
+						id={fieldId}
+						placeholder={props.placeholder ?? "Selecionar itens"}
+					/>
+				</ComboboxChips>
+				<ComboboxContent>
+					<ComboboxList>
+						{props.options.map((option) => (
+							<ComboboxItem key={option.value} value={option.value}>
+								{option.label}
+							</ComboboxItem>
+						))}
+						<ComboboxEmpty>
+							{props.emptyMessage ?? "Nenhuma opcao disponivel."}
+						</ComboboxEmpty>
+					</ComboboxList>
+				</ComboboxContent>
+			</Combobox>
+			{shouldShowError ? (
+				<FieldError id={errorId} errors={field.state.meta.errors} />
+			) : null}
+		</Field>
 	);
 }
 

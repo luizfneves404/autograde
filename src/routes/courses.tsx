@@ -1,6 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { CoursesPage } from "@/features/courses/courses-page";
+import { createFileRoute, Outlet } from "@tanstack/react-router";
+import { parseCourseIndexSearch } from "@/features/courses/course-index";
 
 export const Route = createFileRoute("/courses")({
-	component: CoursesPage,
+	validateSearch: (search) =>
+		parseCourseIndexSearch(search as Record<string, unknown>),
+	component: Outlet,
 });
