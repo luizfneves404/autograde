@@ -75,7 +75,7 @@ describe("PreferencesPage", () => {
 		);
 		await user.click(
 			screen.getByRole("button", {
-				name: "Salvar codigos",
+				name: "Salvar",
 			}),
 		);
 

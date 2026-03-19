@@ -108,7 +108,7 @@ function DestinationCodesForm({
 						)}
 					</form.AppField>
 					<form.AppForm>
-						<form.SubmitButton>Salvar codigos</form.SubmitButton>
+						<form.SubmitButton>Salvar</form.SubmitButton>
 					</form.AppForm>
 				</FieldGroup>
 			</FieldSet>
