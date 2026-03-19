@@ -244,6 +244,7 @@ export type UIConstraint = z.infer<typeof UIConstraintSchema>;
 export const PreferenceSetSchema = z.object({
 	hardConstraints: z.array(UIConstraintSchema),
 	userDestCodes: z.array(z.string()),
+	ignoreLackOfVacancies: z.boolean().default(false),
 });
 export type PreferenceSet = z.infer<typeof PreferenceSetSchema>;
 

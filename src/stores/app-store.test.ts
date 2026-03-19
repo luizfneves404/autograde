@@ -49,6 +49,7 @@ function makeCourse(overrides: Partial<Course> = {}): Course {
 const emptyPreferenceSet: PreferenceSet = {
 	hardConstraints: [],
 	userDestCodes: ["CCP"],
+	ignoreLackOfVacancies: false,
 };
 
 describe("app-store", () => {
@@ -66,6 +67,24 @@ describe("app-store", () => {
 
 		expect(store.getState().courses).toEqual(importedData.courses);
 		expect(store.getState().preferenceSet).toEqual(importedData.preferenceSet);
+	});
+
+	it("defaults ignoreLackOfVacancies to false for legacy imports", () => {
+		const store = createPlainAppStore();
+
+		store.getState().importJsonText(
+			JSON.stringify({
+				courses: {
+					INF1001: makeCourse(),
+				},
+				preferenceSet: {
+					hardConstraints: [],
+					userDestCodes: ["CCP"],
+				},
+			}),
+		);
+
+		expect(store.getState().preferenceSet.ignoreLackOfVacancies).toBe(false);
 	});
 
 	it("imports UTF-16 CSV files", async () => {
@@ -111,6 +130,7 @@ describe("app-store", () => {
 						},
 					],
 					userDestCodes: ["CCP"],
+					ignoreLackOfVacancies: true,
 				},
 			},
 			{
@@ -125,6 +145,7 @@ describe("app-store", () => {
 			expect.any(Object),
 			[maxCreditLoad(20)],
 			["CCP"],
+			true,
 			expect.any(Function),
 		);
 		expect(store.getState().grades).toEqual([{ classes: [] }]);

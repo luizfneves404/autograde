@@ -30,6 +30,7 @@ import { getDestCodeName } from "@/utils/destCodes";
 
 const destinationCodesSchema = z.object({
 	userDestCodes: z.array(z.string()).min(1, "Selecione pelo menos um codigo."),
+	ignoreLackOfVacancies: z.boolean(),
 });
 
 const addConstraintSchema = z.object({
@@ -51,20 +52,26 @@ const constraintEditorSchema = z.object({
 function DestinationCodesForm({
 	availableDestCodes,
 	initialCodes,
+	initialIgnoreLackOfVacancies,
 	onSubmit,
 }: {
 	availableDestCodes: string[];
 	initialCodes: string[];
-	onSubmit: (codes: string[]) => void;
+	initialIgnoreLackOfVacancies: boolean;
+	onSubmit: (value: {
+		userDestCodes: string[];
+		ignoreLackOfVacancies: boolean;
+	}) => void;
 }) {
 	const form = useAppForm({
 		defaultValues: {
 			userDestCodes: initialCodes,
+			ignoreLackOfVacancies: initialIgnoreLackOfVacancies,
 		},
 		validators: {
 			onChange: destinationCodesSchema,
 		},
-		onSubmit: ({ value }) => onSubmit(value.userDestCodes),
+		onSubmit: ({ value }) => onSubmit(value),
 	});
 
 	return (
@@ -89,6 +96,14 @@ function DestinationCodesForm({
 									value: code,
 									description: code,
 								}))}
+							/>
+						)}
+					</form.AppField>
+					<form.AppField name="ignoreLackOfVacancies">
+						{(field) => (
+							<field.CheckboxField
+								label="Ignorar falta de vagas ao analisar e gerar grades"
+								placeholder="Permite considerar turmas sem vagas disponiveis."
 							/>
 						)}
 					</form.AppField>
@@ -333,6 +348,9 @@ export function PreferencesPage() {
 	const courses = useAppStore((state) => state.courses);
 	const preferenceSet = useAppStore((state) => state.preferenceSet);
 	const setUserDestCodes = useAppStore((state) => state.setUserDestCodes);
+	const setIgnoreLackOfVacancies = useAppStore(
+		(state) => state.setIgnoreLackOfVacancies,
+	);
 	const upsertConstraint = useAppStore((state) => state.upsertConstraint);
 	const deleteConstraint = useAppStore((state) => state.deleteConstraint);
 
@@ -363,7 +381,11 @@ export function PreferencesPage() {
 					<DestinationCodesForm
 						availableDestCodes={availableDestCodes}
 						initialCodes={preferenceSet.userDestCodes}
-						onSubmit={setUserDestCodes}
+						initialIgnoreLackOfVacancies={preferenceSet.ignoreLackOfVacancies}
+						onSubmit={(value) => {
+							setUserDestCodes(value.userDestCodes);
+							setIgnoreLackOfVacancies(value.ignoreLackOfVacancies);
+						}}
 					/>
 				</CardContent>
 			</Card>

@@ -17,6 +17,7 @@ const STORAGE_KEY = "autograde_data";
 const defaultPreferenceSet: PreferenceSet = {
 	hardConstraints: [],
 	userDestCodes: [],
+	ignoreLackOfVacancies: false,
 };
 
 type GenerateOptimizedGrades = typeof generateOptimizedGrades;
@@ -40,6 +41,7 @@ interface AppStoreActions {
 	upsertConstraint: (constraint: UIConstraint) => void;
 	deleteConstraint: (constraintId: string) => void;
 	setUserDestCodes: (userDestCodes: string[]) => void;
+	setIgnoreLackOfVacancies: (ignoreLackOfVacancies: boolean) => void;
 	setGrades: (grades: Grade[]) => void;
 	clearGrades: () => void;
 	setManualSelectedClassIds: (ids: string[]) => void;
@@ -138,6 +140,15 @@ function createAppStoreState(
 				grades: [],
 			}));
 		},
+		setIgnoreLackOfVacancies: (ignoreLackOfVacancies) => {
+			set((state) => ({
+				preferenceSet: {
+					...state.preferenceSet,
+					ignoreLackOfVacancies,
+				},
+				grades: [],
+			}));
+		},
 		setGrades: (grades) => {
 			set({ grades });
 		},
@@ -183,6 +194,7 @@ function createAppStoreState(
 					.filter((constraint) => constraint.enabled)
 					.map((constraint) => constraint.expression),
 				preferenceSet.userDestCodes,
+				preferenceSet.ignoreLackOfVacancies,
 				() => undefined,
 			);
 			set({ grades });

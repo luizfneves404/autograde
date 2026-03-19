@@ -17,8 +17,7 @@ import { getAvailableClasses } from "@/stores/selectors";
 import type { CourseClass, Grade } from "@/types";
 import {
 	type EvaluationResult,
-	enrichClass,
-	evaluateConstraint,
+	evaluateManualGrade,
 } from "@/utils/gradeOptimizer";
 
 const manualGradeSchema = z.object({
@@ -35,7 +34,9 @@ export function ManualPage() {
 	const courses = useAppStore((state) => state.courses);
 	const preferenceSet = useAppStore((state) => state.preferenceSet);
 	const savedClassIds = useAppStore((state) => state.manualSelectedClassIds);
-	const setSavedClassIds = useAppStore((state) => state.setManualSelectedClassIds);
+	const setSavedClassIds = useAppStore(
+		(state) => state.setManualSelectedClassIds,
+	);
 	const availableClasses = useMemo(
 		() => getAvailableClasses(courses),
 		[courses],
@@ -82,15 +83,14 @@ export function ManualPage() {
 				return found ? [found] : [];
 			});
 
-			const evaluation = evaluateConstraint(
-				{
-					op: "and",
-					children: preferenceSet.hardConstraints
-						.filter((constraint) => constraint.enabled)
-						.map((constraint) => constraint.expression),
-				},
-				classes.map((courseClass) => enrichClass(courseClass, courses)),
-				"explain",
+			const evaluation = evaluateManualGrade(
+				classes,
+				courses,
+				preferenceSet.hardConstraints
+					.filter((constraint) => constraint.enabled)
+					.map((constraint) => constraint.expression),
+				preferenceSet.userDestCodes,
+				preferenceSet.ignoreLackOfVacancies,
 			);
 
 			setSavedClassIds(value.selectedClassIds);
