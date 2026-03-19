@@ -349,13 +349,17 @@ function CheckboxGroupField(
 			<FieldLabel htmlFor={fieldId} data-invalid={isInvalid}>
 				{props.label}
 			</FieldLabel>
-			{props.description ? (
+
+			{props.description && (
 				<FieldDescription id={descriptionId}>
 					{props.description}
 				</FieldDescription>
-			) : null}
+			)}
+
 			<Combobox
 				multiple
+				virtualized={props.options.length > 50}
+				items={props.options}
 				value={field.state.value}
 				onValueChange={(value) =>
 					field.handleChange(value === null ? [] : value)
@@ -369,30 +373,41 @@ function CheckboxGroupField(
 					)}
 					onBlur={field.handleBlur}
 				>
-					<ComboboxChip>
-						<ComboboxValue />
-					</ComboboxChip>
+					<ComboboxValue>
+						{field.state.value.map((val) => {
+							const selectedOption = props.options.find((o) => o.value === val);
+							return (
+								<ComboboxChip key={val}>
+									{selectedOption?.label ?? val}
+								</ComboboxChip>
+							);
+						})}
+					</ComboboxValue>
+
 					<ComboboxChipsInput
 						id={fieldId}
 						placeholder={props.placeholder ?? "Selecionar itens"}
 					/>
 				</ComboboxChips>
+
 				<ComboboxContent>
 					<ComboboxList>
-						{props.options.map((option) => (
+						{(option: Option) => (
 							<ComboboxItem key={option.value} value={option.value}>
 								{option.label}
 							</ComboboxItem>
-						))}
-						<ComboboxEmpty>
-							{props.emptyMessage ?? "Nenhuma opcao disponivel."}
-						</ComboboxEmpty>
+						)}
 					</ComboboxList>
+
+					<ComboboxEmpty>
+						{props.emptyMessage ?? "Nenhuma opcao disponivel."}
+					</ComboboxEmpty>
 				</ComboboxContent>
 			</Combobox>
-			{shouldShowError ? (
+
+			{shouldShowError && (
 				<FieldError id={errorId} errors={field.state.meta.errors} />
-			) : null}
+			)}
 		</Field>
 	);
 }
