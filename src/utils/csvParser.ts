@@ -1,21 +1,75 @@
+import Papa from "papaparse";
 import type { Course, DayOfWeek, Schedule } from "@/types";
 
-/**
- * Parses a denormalized CSV string into a purely nested data structure of courses.
- * This function treats the nested structure as the single source of truth.
- *
- * @param csvContent The raw string content from the CSV file.
- * @returns A dictionary of courses, with classes and offerings nested within.
- */
-export const parseCSVData = (csvContent: string): Record<string, Course> => {
+type CSVInput = string | ArrayBuffer | Uint8Array;
+
+function decodeCSVInput(input: CSVInput): string {
+	if (typeof input === "string") {
+		return input.replace(/^\uFEFF/, "");
+	}
+
+	const bytes = input instanceof Uint8Array ? input : new Uint8Array(input);
+	const isUtf16LE = bytes[0] === 0xff && bytes[1] === 0xfe;
+	const isUtf16BE = bytes[0] === 0xfe && bytes[1] === 0xff;
+
+	const decoder = isUtf16LE
+		? new TextDecoder("utf-16le")
+		: isUtf16BE
+			? new TextDecoder("utf-16be")
+			: new TextDecoder();
+
+	return decoder.decode(bytes).replace(/^\uFEFF/, "");
+}
+
+function normalizePUCRow(row: string[]): string[] {
+	const trimmedRow = [...row];
+	while ((trimmedRow.at(-1) ?? "").trim() === "") {
+		trimmedRow.pop();
+	}
+
+	if (trimmedRow.length < 14) {
+		return trimmedRow.map((value) => value.trim());
+	}
+
+	const professorIndex = trimmedRow.length - 12;
+	const courseName = trimmedRow
+		.slice(1, professorIndex)
+		.map((value) => value.trim())
+		.filter(Boolean)
+		.join(", ");
+
+	return [
+		trimmedRow[0]?.trim() ?? "",
+		courseName,
+		...trimmedRow.slice(professorIndex).map((value) => value.trim()),
+	];
+}
+
+export const parseCSVData = (csvContent: CSVInput): Record<string, Course> => {
 	const courses: Record<string, Course> = {};
 
-	const lines = csvContent.split("\n");
+	const result = Papa.parse<string[]>(decodeCSVInput(csvContent), {
+		header: false,
+		skipEmptyLines: true,
+	});
+
+	const rows = result.data;
+	if (!rows.length) {
+		throw new Error(
+			"CSV is empty. Please ensure you are using a valid class schedule CSV file.",
+		);
+	}
 
 	let dataStartIndex = -1;
-	for (const [i, line] of lines.entries()) {
-		const trimmedLine = line.trim();
-		if (trimmedLine.includes("Disciplina,Nome da disciplina,Professor")) {
+	for (const [i, row] of rows.entries()) {
+		const c0 = row[0]?.trim() ?? "";
+		const c1 = row[1]?.trim() ?? "";
+		const c2 = row[2]?.trim() ?? "";
+		if (
+			c0 === "Disciplina" &&
+			c1 === "Nome da disciplina" &&
+			c2 === "Professor"
+		) {
 			dataStartIndex = i + 1;
 			break;
 		}
@@ -27,12 +81,9 @@ export const parseCSVData = (csvContent: string): Record<string, Course> => {
 		);
 	}
 
-	for (const [i, line] of lines.slice(dataStartIndex).entries()) {
-		const trimmedLine = line.trim();
-		if (!trimmedLine) continue;
-
+	for (const [i, row] of rows.slice(dataStartIndex).entries()) {
 		try {
-			const parts = trimmedLine.split(",");
+			const parts = normalizePUCRow(row);
 
 			const [
 				courseCode,
@@ -48,7 +99,8 @@ export const parseCSVData = (csvContent: string): Record<string, Course> => {
 				SHFHours,
 				__,
 				preReq,
-			] = parts.map((p) => p.trim());
+				___,
+			] = parts;
 			if (
 				!courseCode ||
 				!courseName ||
@@ -129,10 +181,6 @@ const dayMap: Record<string, DayOfWeek> = {
 	SAB: "sábado",
 };
 
-/**
- * Parses a schedule string (e.g., "SEG 8-10 QUI 8-10") into a structured array.
- * This function remains unchanged.
- */
 export const parseScheduleFromCSV = (horarioSala: string): Schedule => {
 	if (!horarioSala.trim()) {
 		return [];
@@ -142,7 +190,9 @@ export const parseScheduleFromCSV = (horarioSala: string): Schedule => {
 
 	return timeBlocks.reduce<Schedule>((schedule, block) => {
 		try {
-			const match = block.trim().match(/^([A-Z]{3})\s+(\d{1,2})-(\d{1,2})$/);
+			const match = block
+				.trim()
+				.match(/^([A-Z]{3})\s+(\d{1,2})-(\d{1,2})(?:\s+.+)?$/);
 
 			if (!match) {
 				return schedule;
@@ -150,7 +200,7 @@ export const parseScheduleFromCSV = (horarioSala: string): Schedule => {
 
 			const [, dayAbbr, startStr, endStr] = match;
 			if (!dayAbbr || !startStr || !endStr) {
-				throw new Error("Invalid schedule string"); // shouldnt happen because it did match the regex
+				throw new Error("Invalid schedule string");
 			}
 
 			const startHour = parseInt(startStr, 10);
