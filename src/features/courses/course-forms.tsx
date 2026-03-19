@@ -142,8 +142,8 @@ export function CourseForm({
 				<form.AppField name="shouldHavePreRequisites">
 					{(field) => (
 						<field.CheckboxField
-							label="Precisa de pre-requisitos"
-							placeholder="Marque quando a disciplina exigir pre-requisitos."
+							label="Precisa de algum pré-requisito"
+							placeholder="Marque se a disciplina exigir algum pré-requisito (campo ignorado pelo otimizador)."
 						/>
 					)}
 				</form.AppField>

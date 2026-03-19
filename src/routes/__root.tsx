@@ -45,11 +45,11 @@ function RootLayout() {
 		try {
 			const response = await fetch(sampleCsvUrl);
 			if (!response.ok) {
-				throw new Error("Falha ao carregar o CSV de exemplo.");
+				throw new Error("Falha ao carregar o CSV oficial.");
 			}
 
 			await importCsvFile(await response.blob());
-			window.alert("CSV de exemplo importado com sucesso.");
+			window.alert("CSV oficial importado com sucesso.");
 		} catch (error) {
 			window.alert(
 				error instanceof Error ? error.message : "Falha ao importar arquivo.",
@@ -141,10 +141,10 @@ function RootLayout() {
 								variant="outline"
 								onClick={() => csvInputRef.current?.click()}
 							>
-								Importar CSV
+								Importar CSV do meu computador
 							</Button>
 							<Button variant="outline" onClick={handleImportBundledCsv}>
-								Usar CSV Oficial
+								Importar CSV oficial
 							</Button>
 							<Button variant="outline" onClick={handleExport}>
 								Exportar
