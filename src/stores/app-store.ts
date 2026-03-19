@@ -29,6 +29,7 @@ interface AppStoreState {
 	courses: Record<string, Course>;
 	preferenceSet: PreferenceSet;
 	grades: Grade[];
+	manualSelectedClassIds: string[];
 }
 
 interface AppStoreActions {
@@ -41,6 +42,7 @@ interface AppStoreActions {
 	setUserDestCodes: (userDestCodes: string[]) => void;
 	setGrades: (grades: Grade[]) => void;
 	clearGrades: () => void;
+	setManualSelectedClassIds: (ids: string[]) => void;
 	replaceAppData: (data: AppData) => void;
 	exportAppData: () => string;
 	importJsonText: (content: string) => void;
@@ -66,6 +68,7 @@ function getInitialState(initialState?: Partial<AppStoreState>): AppStoreState {
 		courses: initialState?.courses ?? {},
 		preferenceSet: initialState?.preferenceSet ?? defaultPreferenceSet,
 		grades: initialState?.grades ?? [],
+		manualSelectedClassIds: initialState?.manualSelectedClassIds ?? [],
 	};
 }
 
@@ -141,6 +144,9 @@ function createAppStoreState(
 		clearGrades: () => {
 			set({ grades: [] });
 		},
+		setManualSelectedClassIds: (ids) => {
+			set({ manualSelectedClassIds: ids });
+		},
 		replaceAppData: (data) => {
 			set({
 				courses: data.courses,
@@ -202,6 +208,7 @@ export const appStore = createStore<AppStore>()(
 		partialize: (state) => ({
 			courses: state.courses,
 			preferenceSet: state.preferenceSet,
+			manualSelectedClassIds: state.manualSelectedClassIds,
 		}),
 	}),
 );

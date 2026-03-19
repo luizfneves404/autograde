@@ -34,13 +34,14 @@ function classId(courseClass: CourseClass): string {
 export function ManualPage() {
 	const courses = useAppStore((state) => state.courses);
 	const preferenceSet = useAppStore((state) => state.preferenceSet);
+	const savedClassIds = useAppStore((state) => state.manualSelectedClassIds);
+	const setSavedClassIds = useAppStore((state) => state.setManualSelectedClassIds);
 	const availableClasses = useMemo(
 		() => getAvailableClasses(courses),
 		[courses],
 	);
 	const [evaluationResult, setEvaluationResult] =
 		useState<EvaluationResult | null>(null);
-	const [selectedClasses, setSelectedClasses] = useState<CourseClass[]>([]);
 
 	const classOptions = availableClasses.map((courseClass) => ({
 		label: `${courseClass.courseCode}-${courseClass.classCode}`,
@@ -59,9 +60,18 @@ export function ManualPage() {
 		[availableClasses],
 	);
 
+	const selectedClasses = useMemo(
+		() =>
+			savedClassIds.flatMap((id) => {
+				const found = classMap.get(id);
+				return found ? [found] : [];
+			}),
+		[savedClassIds, classMap],
+	);
+
 	const form = useAppForm({
 		defaultValues: {
-			selectedClassIds: selectedClasses.map(classId),
+			selectedClassIds: savedClassIds,
 		},
 		validators: {
 			onChange: manualGradeSchema,
@@ -83,7 +93,7 @@ export function ManualPage() {
 				"explain",
 			);
 
-			setSelectedClasses(classes);
+			setSavedClassIds(value.selectedClassIds);
 			setEvaluationResult(evaluation);
 		},
 	});

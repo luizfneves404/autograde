@@ -25,10 +25,6 @@ export function GradesPage() {
 				<h2 className="text-3xl font-semibold tracking-tight">
 					Grades geradas
 				</h2>
-				<p className="text-muted-foreground">
-					O gerador agora entrega resultados em rotas dedicadas, sem depender do
-					carrossel do Chakra.
-				</p>
 			</div>
 
 			{visibleGrades.length === 0 ? (

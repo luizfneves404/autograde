@@ -144,7 +144,7 @@ function RootLayout() {
 								Importar CSV
 							</Button>
 							<Button variant="outline" onClick={handleImportBundledCsv}>
-								Usar CSV de Exemplo
+								Usar CSV Oficial
 							</Button>
 							<Button variant="outline" onClick={handleExport}>
 								Exportar
