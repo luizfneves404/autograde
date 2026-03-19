@@ -158,6 +158,108 @@ export function enrichClass(
 	};
 }
 
+function getOfferingsForDestCodes(
+	courseClass: Pick<CourseClass, "offerings">,
+	userDestCodes: readonly string[],
+) {
+	return courseClass.offerings.filter((offering) =>
+		userDestCodes.includes(offering.destCode),
+	);
+}
+
+function isClassAvailableForGeneration(
+	courseClass: Pick<CourseClass, "offerings">,
+	userDestCodes: readonly string[],
+	ignoreLackOfVacancies: boolean,
+): boolean {
+	const matchingOfferings = getOfferingsForDestCodes(
+		courseClass,
+		userDestCodes,
+	);
+	if (matchingOfferings.length === 0) {
+		return false;
+	}
+
+	return (
+		ignoreLackOfVacancies ||
+		matchingOfferings.some((offering) => offering.vacancyCount > 0)
+	);
+}
+
+export function evaluateClassAvailability(
+	classes: readonly Pick<
+		CourseClass,
+		"classCode" | "courseCode" | "offerings"
+	>[],
+	userDestCodes: readonly string[],
+	ignoreLackOfVacancies: boolean,
+): EvaluationResult {
+	const reasons: string[] = [];
+
+	for (const courseClass of classes) {
+		const matchingOfferings = getOfferingsForDestCodes(
+			courseClass,
+			userDestCodes,
+		);
+		const classLabel = `${courseClass.courseCode}-${courseClass.classCode}`;
+
+		if (matchingOfferings.length === 0) {
+			reasons.push(
+				`Turma ${classLabel} nao esta disponivel para os codigos de destino selecionados.`,
+			);
+			continue;
+		}
+
+		if (
+			!ignoreLackOfVacancies &&
+			!matchingOfferings.some((offering) => offering.vacancyCount > 0)
+		) {
+			reasons.push(
+				`Turma ${classLabel} nao possui vagas nos codigos de destino selecionados.`,
+			);
+		}
+	}
+
+	return {
+		satisfied: reasons.length === 0,
+		reasons,
+	};
+}
+
+export function evaluateManualGrade(
+	classes: readonly CourseClass[],
+	allCourses: Record<string, Course>,
+	userPreferences: readonly ExprNode[],
+	userDestCodes: readonly string[],
+	ignoreLackOfVacancies: boolean,
+): EvaluationResult {
+	const availabilityResult = evaluateClassAvailability(
+		classes,
+		userDestCodes,
+		ignoreLackOfVacancies,
+	);
+	const constraintsResult = evaluateConstraint(
+		{
+			op: "and",
+			children: [...userPreferences],
+		},
+		classes.map((courseClass) => enrichClass(courseClass, allCourses)),
+		"explain",
+	);
+
+	if (availabilityResult.satisfied && constraintsResult.satisfied) {
+		return constraintsResult;
+	}
+
+	return {
+		satisfied: false,
+		reasons: [
+			...availabilityResult.reasons,
+			...(constraintsResult.satisfied ? [] : constraintsResult.reasons),
+		],
+	};
+}
+
 /**
  * Checks if two time slots overlap
  */
@@ -612,6 +714,7 @@ export const generateOptimizedGrades = (
 	allCourses: Record<string, Course>,
 	userPreferences: ExprNode[],
 	userDestCodes: string[],
+	ignoreLackOfVacancies: boolean,
 	onProgress?: (progress: number) => void,
 ): Grade[] => {
 	console.log("[OptimizedGenerator] 🚀 Starting course-first generation");
@@ -623,10 +726,10 @@ export const generateOptimizedGrades = (
 		const availableClasses = course.classes
 			.map((cls) => enrichClass(cls, allCourses))
 			.filter((cls) =>
-				cls.offerings.some(
-					(offering) =>
-						userDestCodes.includes(offering.destCode) &&
-						offering.vacancyCount > 0,
+				isClassAvailableForGeneration(
+					cls,
+					userDestCodes,
+					ignoreLackOfVacancies,
 				),
 			);
 
