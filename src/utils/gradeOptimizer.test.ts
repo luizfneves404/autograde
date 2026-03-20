@@ -140,6 +140,39 @@ describe("gradeOptimizer", () => {
 		);
 	});
 
+	it("fails manual grade analysis when selected classes exceed 30 credits", () => {
+		const classes = Array.from({ length: 8 }, (_, index) =>
+			makeClass({
+				classCode: `${index + 1}WA`,
+				courseCode: `INF10${(index + 10).toString()}`,
+				offerings: [
+					{
+						classCode: `${index + 1}WA`,
+						courseCode: `INF10${(index + 10).toString()}`,
+						destCode: "QQC",
+						vacancyCount: 0,
+					},
+				],
+			}),
+		);
+		const courses = Object.fromEntries(
+			classes.map((courseClass) => [courseClass.courseCode, makeCourse(courseClass)]),
+		);
+
+		const result = evaluateManualGrade(
+			classes,
+			courses,
+			[minCreditLoad(32)],
+			["QQC"],
+			true,
+		);
+
+		expect(result.satisfied).toBe(false);
+		expect(result.reasons).toContain(
+			"Sum of 'numCredits' is 32, which violates <= 30",
+		);
+	});
+
 	it("cannot reach 26 credits from the official CSV subset when zero-vacancy classes are excluded", () => {
 		const grades = generateOptimizedGrades(
 			officialCourses,

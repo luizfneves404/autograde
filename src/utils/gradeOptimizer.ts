@@ -241,7 +241,7 @@ export function evaluateManualGrade(
 	const constraintsResult = evaluateConstraint(
 		{
 			op: "and",
-			children: [...userPreferences],
+			children: [...systemConstraints, ...userPreferences],
 		},
 		classes.map((courseClass) => enrichClass(courseClass, allCourses)),
 		"explain",
