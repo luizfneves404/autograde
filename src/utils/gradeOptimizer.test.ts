@@ -2,6 +2,12 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import {
+	OFFICIAL_GRADE_COUNT_WITH_VACANCY_OVERRIDE,
+	OFFICIAL_MIN_CREDIT_LOAD,
+	OFFICIAL_TARGET_COURSE_CODES,
+	OFFICIAL_USER_DEST_CODES,
+} from "@/fixtures/officialGradeScenario";
 import type { Course, CourseClass } from "@/types";
 import { parseCSVData } from "./csvParser";
 import {
@@ -12,16 +18,7 @@ import {
 	minCreditLoad,
 } from "./gradeOptimizer";
 
-const targetCourses = [
-	"INF1721",
-	"INF1027",
-	"INF1041",
-	"ENG4011",
-	"INF1407",
-	"ENG4451",
-	"INF1643",
-	"ENG4421",
-] as const;
+const targetCourses = OFFICIAL_TARGET_COURSE_CODES;
 
 const targetCourseSet = new Set<string>(targetCourses);
 
@@ -34,7 +31,7 @@ const officialCourses = parseCSVData(readFileSync(officialCsvPath));
 
 const constrainedPreferences = [
 	availableCourses([...targetCourses]),
-	minCreditLoad(26),
+	minCreditLoad(OFFICIAL_MIN_CREDIT_LOAD),
 ];
 
 const expectedOverrideCourseSignatures = [
@@ -156,7 +153,10 @@ describe("gradeOptimizer", () => {
 			}),
 		);
 		const courses = Object.fromEntries(
-			classes.map((courseClass) => [courseClass.courseCode, makeCourse(courseClass)]),
+			classes.map((courseClass) => [
+				courseClass.courseCode,
+				makeCourse(courseClass),
+			]),
 		);
 
 		const result = evaluateManualGrade(
@@ -177,7 +177,7 @@ describe("gradeOptimizer", () => {
 		const grades = generateOptimizedGrades(
 			officialCourses,
 			constrainedPreferences,
-			["CEG", "QQC"],
+			[...OFFICIAL_USER_DEST_CODES],
 			false,
 		);
 
@@ -188,7 +188,7 @@ describe("gradeOptimizer", () => {
 		const grades = generateOptimizedGrades(
 			officialCourses,
 			constrainedPreferences,
-			["CEG", "QQC"],
+			[...OFFICIAL_USER_DEST_CODES],
 			true,
 		);
 
@@ -205,7 +205,7 @@ describe("gradeOptimizer", () => {
 				.join(","),
 		);
 
-		expect(grades).toHaveLength(80);
+		expect(grades).toHaveLength(OFFICIAL_GRADE_COUNT_WITH_VACANCY_OVERRIDE);
 		expect([...new Set(courseSignatures)].sort()).toEqual(
 			expectedOverrideCourseSignatures,
 		);
@@ -221,7 +221,7 @@ describe("gradeOptimizer", () => {
 				grade.classes,
 				officialCourses,
 				constrainedPreferences,
-				["CEG", "QQC"],
+				[...OFFICIAL_USER_DEST_CODES],
 				true,
 			);
 
