@@ -92,7 +92,7 @@ export function GradesPage() {
 										size="sm"
 										onClick={() => setSelectedIndex(index)}
 									>
-										{`Opcao ${(index + 1).toString()}`}
+										{`Grade ${(index + 1).toString()}`}
 									</Button>
 								);
 							})}

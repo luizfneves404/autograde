@@ -55,7 +55,7 @@ test.describe("Official CSV and optimizer", () => {
 			OFFICIAL_VISIBLE_GRADE_UI_LIMIT.toString(),
 		);
 		await expect(
-			page.getByRole("button", { name: "Opcao 1", exact: true }),
+			page.getByRole("button", { name: "Grade 1", exact: true }),
 		).toBeVisible();
 		await expect(page.getByText("Visualizando a grade 1.")).toBeVisible();
 		await expect(
