@@ -2,29 +2,35 @@
 
 **live at: https://autograde-c9b.pages.dev**
 
-Um aplicativo web pra te ajudar a montar a grade da PUC-Rio!
+A web app to help PUC-Rio students build their semester schedule.
 
-Todo semestre, um drama que o aluno da PUC passa é esse: como vai ficar meu horário? Vou conseguir pegar as turmas que eu quero, ou as vagas vão acabar? E depois ficamos um tempo pensando e tentando otimizar nossa grade da melhor forma possível.
+Every semester, PUC-Rio students go through the same ritual: staring and clicking around at the official UI of course offerings, trying to figure out which combination of classes fits together the best. Class schedules conflict, students fight over vacancies (if you don't click in the UI fast enough, someone will enroll before you), and some of us lose a lot of time optimizing our schedules.
 
-Foi por causa disso que decidi fazer o Autograde. Inspirado em um projeto de Programação Modular que fiz com meus colegas de graduação, busquei criar um aplicativo que desse liberdade total e funcionalidade máxima para o usuário, permitindo especificar preferências e restrições para que várias grades possíveis fossem geradas.
+Originally inspired by a project built in a Modular Programming course, Autograde's goal is to give students full control over their preferences and constraints, and let the algorithm generate all valid schedules that match.
 
-![Grades geradas](assets/screenshot.png)
+![Generated schedules](assets/screenshot.png)
 
-Se quiser usar as disciplinas oficiais (atualizado em 18/03/2026), clique em "Importar CSV Oficial". Se quiser usar o CSV mais atualizado possível, exporte os dados do [micro-horário](https://www.puc-rio.br/microhorario) em formato CSV sem filtrar por nada (clique no botão de busca sem digitar nada em nenhum campo e depois exporte). Depois, abra e salve o CSV em um aplicativo de planilhas, para garantir a formatação interna do arquivo. Então, faça upload dele no Autograde pelo botão de importar CSV.
+---
 
-Importante: adicione pelo menos uma preferência de "Disciplinas Disponíveis" para limitar quais disciplinas o algoritmo irá tentar incluir nas grades. Coloque ali as disciplinas que você considera puxar no semestre.
+## How to use it
+
+If you want to use the official course data (last updated March 18, 2026), click **"Importar CSV Oficial"**.
+
+For the most up-to-date data, export directly from [PUC-Rio's schedule](https://www.puc-rio.br/microhorario) as a CSV (search with no filters, then export). Open and re-save the file in a spreadsheet app to normalize its internal formatting, then upload it via the CSV import button.
+
+> **Important:** add at least one **"Available Courses"** preference to tell the algorithm which courses you're actually considering for the semester. Without this, the search space is too large to be useful.
 
 ---
 
 ## Tech
 
-- React 19 com React Compiler
-- Vite 7, TypeScript 5.8 strict.
-- Roteamento file-based com TanStack Router (search params totalmente tipados).
-- Estado via Zustand v5 com persist.
-- Formulários com TanStack Form + Zod v4 em todas as fronteiras de domínio.
-- UI com shadcn/ui sobre Radix, estilizado com Tailwind v4.
-- CSV parseado com PapaParse.
-- Testes com Vitest, fast-check (property-based) e Playwright pra end-to-end.
-- Deploy estático no Cloudflare Pages, sem backend — tudo roda no browser. Não faça um servidor quando você não precisa.
+- React 19 with React Compiler
+- Vite 7, TypeScript 5.8 strict
+- File-based routing with TanStack Router (fully typed search params)
+- State management with Zustand v5 + persist
+- Forms with TanStack Form + Zod v4 at all domain boundaries
+- UI with shadcn/ui on top of Radix, styled with Tailwind v4
+- CSV parsing with PapaParse
+- Tests with Vitest, fast-check (property-based testing), and Playwright for E2E
+- Static deploy on Cloudflare Pages, no backend, everything runs in the browser. Don't build a server when you don't need one.
 - Package manager: pnpm
