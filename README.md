@@ -10,8 +10,6 @@ Originally inspired by a project built in a Modular Programming course, Autograd
 
 ![Generated schedules](assets/screenshot.png)
 
----
-
 ## How to use it
 
 If you want to use the official course data (last updated March 18, 2026), click **"Importar CSV Oficial"**.
@@ -19,8 +17,6 @@ If you want to use the official course data (last updated March 18, 2026), click
 For the most up-to-date data, export directly from [PUC-Rio's schedule](https://www.puc-rio.br/microhorario) as a CSV (search with no filters, then export). Open and re-save the file in a spreadsheet app to normalize its internal formatting, then upload it via the CSV import button.
 
 > **Important:** add at least one **"Available Courses"** preference to tell the algorithm which courses you're actually considering for the semester. Without this, the search space is too large to be useful.
-
----
 
 ## Tech
 
