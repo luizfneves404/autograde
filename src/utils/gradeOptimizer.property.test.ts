@@ -7,6 +7,7 @@ import {
 	evaluateClassAvailability,
 	evaluateConstraint,
 	evaluateManualGrade,
+	evaluateTimeConflicts,
 	forbidClassesOnDays,
 	generateOptimizedGrades,
 	maxCreditLoad,
@@ -545,25 +546,32 @@ describe("gradeOptimizer property tests", () => {
 							userDestCodes,
 							ignoreLackOfVacancies,
 						);
+						const enriched = selectedClasses.map((courseClass) =>
+							enrichClass(courseClass, courses),
+						);
 						const availabilityResult = evaluateClassAvailability(
 							selectedClasses,
 							userDestCodes,
 							ignoreLackOfVacancies,
 						);
+						const timeConflictResult = evaluateTimeConflicts(enriched);
 						const constraintsResult = evaluateConstraint(
 							buildManualConstraintNode(userPreferences),
-							selectedClasses.map((courseClass) =>
-								enrichClass(courseClass, courses),
-							),
+							enriched,
 							"explain",
 						);
 						const expectedResult =
-							availabilityResult.satisfied && constraintsResult.satisfied
+							availabilityResult.satisfied &&
+							timeConflictResult.satisfied &&
+							constraintsResult.satisfied
 								? constraintsResult
 								: {
 										satisfied: false,
 										reasons: [
 											...availabilityResult.reasons,
+											...(timeConflictResult.satisfied
+												? []
+												: timeConflictResult.reasons),
 											...(constraintsResult.satisfied
 												? []
 												: constraintsResult.reasons),

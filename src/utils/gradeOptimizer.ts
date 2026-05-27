@@ -226,6 +226,33 @@ export function evaluateClassAvailability(
 	};
 }
 
+export function evaluateTimeConflicts(
+	classes: readonly CourseClassForEval[],
+): EvaluationResult {
+	const conflicts: string[] = [];
+
+	for (let i = 0; i < classes.length; i++) {
+		for (let j = i + 1; j < classes.length; j++) {
+			const a = classes[i];
+			const b = classes[j];
+			for (const sa of a.schedule) {
+				for (const sb of b.schedule) {
+					if (sa.day === sb.day && timeSlotsOverlap(sa.slot, sb.slot)) {
+						conflicts.push(
+							`Time conflict: ${a.courseCode} and ${b.courseCode} overlap on ${sa.day}`,
+						);
+					}
+				}
+			}
+		}
+	}
+
+	return {
+		satisfied: conflicts.length === 0,
+		reasons: conflicts,
+	};
+}
+
 export function evaluateManualGrade(
 	classes: readonly CourseClass[],
 	allCourses: Record<string, Course>,
@@ -233,21 +260,29 @@ export function evaluateManualGrade(
 	userDestCodes: readonly string[],
 	ignoreLackOfVacancies: boolean,
 ): EvaluationResult {
+	const enriched = classes.map((courseClass) =>
+		enrichClass(courseClass, allCourses),
+	);
 	const availabilityResult = evaluateClassAvailability(
 		classes,
 		userDestCodes,
 		ignoreLackOfVacancies,
 	);
+	const timeConflictResult = evaluateTimeConflicts(enriched);
 	const constraintsResult = evaluateConstraint(
 		{
 			op: "and",
 			children: [...systemConstraints, ...userPreferences],
 		},
-		classes.map((courseClass) => enrichClass(courseClass, allCourses)),
+		enriched,
 		"explain",
 	);
 
-	if (availabilityResult.satisfied && constraintsResult.satisfied) {
+	if (
+		availabilityResult.satisfied &&
+		timeConflictResult.satisfied &&
+		constraintsResult.satisfied
+	) {
 		return constraintsResult;
 	}
 
@@ -255,6 +290,7 @@ export function evaluateManualGrade(
 		satisfied: false,
 		reasons: [
 			...availabilityResult.reasons,
+			...(timeConflictResult.satisfied ? [] : timeConflictResult.reasons),
 			...(constraintsResult.satisfied ? [] : constraintsResult.reasons),
 		],
 	};
